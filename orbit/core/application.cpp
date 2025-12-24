@@ -1,7 +1,7 @@
 #include "application.h"
 #include "graphics/d3d11/d3d11core.h"
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+
+#include "platform/platform_common.h"
 
 namespace orbit::application
 {

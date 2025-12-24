@@ -3,6 +3,8 @@
 #include <string>
 #include <format>
 #include "d3d11common.h"
+#include "shaders/shader.h"
+#include "orbit/graphics/d3d11/content/mesh.h"
 
 namespace orbit::graphics::d3d11::core
 {
@@ -29,10 +31,10 @@ namespace orbit::graphics::d3d11::core
 		D3D11_VIEWPORT _viewport{};
 
 		const D3D_FEATURE_LEVEL supported_feature_levels[] = {
-			D3D_FEATURE_LEVEL_10_0,
-			D3D_FEATURE_LEVEL_10_1,
-			D3D_FEATURE_LEVEL_11_0,
 			D3D_FEATURE_LEVEL_11_1,
+			D3D_FEATURE_LEVEL_11_0,
+			D3D_FEATURE_LEVEL_10_1,
+			D3D_FEATURE_LEVEL_10_0,
 		};
 
 		using idxgi_factory = IDXGIFactory7;
@@ -42,7 +44,11 @@ namespace orbit::graphics::d3d11::core
 		using idxgi_swap_chain = IDXGISwapChain4;
 	}
 
-
+	namespace 
+	{
+		shaders::shader color_shader;
+		::orbit::graphics::d3d11::content::mesh triangle;
+	}
 
 	idxgi_adapter* get_best_adapter(idxgi_factory* dxgi_factory)
 	{
@@ -245,7 +251,28 @@ namespace orbit::graphics::d3d11::core
 
 		util::name_com_object(_depth_stencil_state, "deoth stencil");
 		util::name_com_object(_device, "device 1");
+
+		color_shader._pixel_shader_path = std::filesystem::path("src/color/color_ps.hlsl");
+		color_shader._vertex_shader_path = std::filesystem::path("src/color/color_vs.hlsl");
+
+		color_shader._vertex_shader_entry_point = "vs_main";
+		color_shader._pixel_shader_entry_point = "ps_main";
 		
+		color_shader.initialize();
+
+		triangle._indices.emplace_back(0);
+		triangle._indices.emplace_back(1);
+		triangle._indices.emplace_back(2);
+
+		::orbit::graphics::d3d11::content::mesh::vertex v1, v2, v3;
+		v1 = { glm::vec3(-1.f, -1.f, 0.f), glm::vec3(0.5f, 0.7f, 0.5f) };
+		v2 = { glm::vec3(0.f, 1.f, 0.f) ,glm::vec3(1.f, 1.f, 0.1f) };
+		v3 = { glm::vec3(1.f, -1.f, 0.f), glm::vec3(0.f, 0.2f, 1.f) };
+		triangle._vertices.emplace_back(v1);
+		triangle._vertices.emplace_back(v2);
+		triangle._vertices.emplace_back(v3);
+
+		triangle.initialize();
 		return true;
 	}
 
@@ -273,6 +300,9 @@ namespace orbit::graphics::d3d11::core
 	void update()
 	{
 		begin_frame(0.5f,0.2f, 0.2f, 1.f);
+		color_shader.bind();
+		triangle.bind_buffers();
+		_device_context->DrawIndexed(3, 0, 0);
 		end_frame();
 	}
 

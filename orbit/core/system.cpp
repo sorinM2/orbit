@@ -1,6 +1,5 @@
 #include "system.h"
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform/platform_common.h"
 #include "application.h"
 
 namespace orbit::system

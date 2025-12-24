@@ -1,5 +1,6 @@
 #pragma once 
 #include <d3d11.h>
+#include <dxgi1_6.h>
 #include <format>
 
 namespace orbit::graphics::d3d11::util
