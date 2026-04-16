@@ -3,8 +3,8 @@
 #include <d3dcompiler.h>
 #include <fstream>
 #include "shaders_path.h"
-#include "utility/vector.h"
-
+#include "orbit/utility/vector.h"
+#include "orbit/utility/freelist.h"
 namespace orbit::graphics::d3d11::shaders
 {
 	namespace 

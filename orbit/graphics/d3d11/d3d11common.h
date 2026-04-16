@@ -34,5 +34,5 @@ namespace orbit::graphics::d3d11::util
 	}																														\
 }
 #else
-#define DXCALL(X) x;
+#define DXCALL(x) x;
 #endif

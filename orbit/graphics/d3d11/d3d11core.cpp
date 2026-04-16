@@ -1,8 +1,9 @@
 #include "d3d11core.h"
-#include "core/system.h"
+#include "orbit/core/system.h"
 #include <string>
 #include <format>
 #include "d3d11common.h"
+#include "orbit/graphics/camera.h"
 #include "shaders/shader.h"
 #include "orbit/graphics/d3d11/content/mesh.h"
 
@@ -29,6 +30,9 @@ namespace orbit::graphics::d3d11::core
 		ID3D11DepthStencilView* _depth_stencil_view = nullptr;
 		ID3D11RasterizerState* _rasterizer_state = nullptr;
 		D3D11_VIEWPORT _viewport{};
+		ID3D11SamplerState* _sampler_state = nullptr;
+
+		ID3D11Buffer* _camera_buffer;
 
 		const D3D_FEATURE_LEVEL supported_feature_levels[] = {
 			D3D_FEATURE_LEVEL_11_1,
@@ -47,7 +51,6 @@ namespace orbit::graphics::d3d11::core
 	namespace 
 	{
 		shaders::shader color_shader;
-		::orbit::graphics::d3d11::content::mesh triangle;
 	}
 
 	idxgi_adapter* get_best_adapter(idxgi_factory* dxgi_factory)
@@ -107,6 +110,8 @@ namespace orbit::graphics::d3d11::core
 
 		util::safe_release(info_queue);
 #endif
+
+		return true;
 	}
 
 	bool initialize()
@@ -130,7 +135,7 @@ namespace orbit::graphics::d3d11::core
 		vsync_numerator = dev_mode.dmDisplayFrequency;
 		vsync_denominator = 1;
 
-		OutputDebugString(std::format("Creating swapchain:\n Monitor name: {}\n Monitor refresh rate: {} \n Monitor size: {}x{}\n", monitor_info.szDevice, vsync_numerator, window_width, window_height).c_str());
+		//OutputDebugString(std::format("Creating swapchain:\n Monitor name: {}\n Monitor refresh rate: {} \n Monitor size: {}x{}\n", monitor_info.szDevice, vsync_numerator, window_width, window_height).c_str());
 
 		//dxgi
 		idxgi_factory* _dxgi_factory;
@@ -237,6 +242,23 @@ namespace orbit::graphics::d3d11::core
 
 		DXCALL(_device->CreateRasterizerState(&rasterizer_desc, &_rasterizer_state));
 
+		D3D11_SAMPLER_DESC sampler_desc;
+		sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		sampler_desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampler_desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampler_desc.MipLODBias = 0.0f;
+		sampler_desc.MaxAnisotropy = 1;
+		sampler_desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+		sampler_desc.BorderColor[0] = 0.0f;
+		sampler_desc.BorderColor[1] = 0.0f;
+		sampler_desc.BorderColor[2] = 0.0f;
+		sampler_desc.BorderColor[3] = 0.0f;
+		sampler_desc.MinLOD = 0;
+		sampler_desc.MaxLOD = D3D11_FLOAT32_MAX;
+
+		DXCALL(_device->CreateSamplerState(&sampler_desc, &_sampler_state));
+
 		_viewport.MinDepth = 0.f;
 		_viewport.MaxDepth = 1.f;
 		_viewport.TopLeftX = 0;
@@ -260,34 +282,42 @@ namespace orbit::graphics::d3d11::core
 		
 		color_shader.initialize();
 
-		triangle._indices.emplace_back(0);
-		triangle._indices.emplace_back(1);
-		triangle._indices.emplace_back(2);
+		D3D11_BUFFER_DESC camera_buffer_desc;
+		camera_buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
+		camera_buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		camera_buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		camera_buffer_desc.MiscFlags = 0;
+		camera_buffer_desc.StructureByteStride = 0;
+		camera_buffer_desc.ByteWidth = sizeof(camera::camera_buffer);
 
-		::orbit::graphics::d3d11::content::mesh::vertex v1, v2, v3;
-		v1 = { glm::vec3(-1.f, -1.f, 0.f), glm::vec3(0.5f, 0.7f, 0.5f) };
-		v2 = { glm::vec3(0.f, 1.f, 0.f) ,glm::vec3(1.f, 1.f, 0.1f) };
-		v3 = { glm::vec3(1.f, -1.f, 0.f), glm::vec3(0.f, 0.2f, 1.f) };
-		triangle._vertices.emplace_back(v1);
-		triangle._vertices.emplace_back(v2);
-		triangle._vertices.emplace_back(v3);
+		D3D11_SUBRESOURCE_DATA camera_buffer_data;
+		camera_buffer_data.pSysMem = &camera::get_camera_buffer();
+		camera_buffer_data.SysMemPitch = 0;
+		camera_buffer_data.SysMemSlicePitch = 0;
 
-		triangle.initialize();
+		DXCALL(_device->CreateBuffer(&camera_buffer_desc, &camera_buffer_data, &_camera_buffer));
+
+		_device_context->VSSetConstantBuffers(1, 1, &_camera_buffer);
+		_device_context->PSGetSamplers(0, 1, &_sampler_state);
+
 		return true;
 	}
 
-	void begin_frame(float red, float green, float blue, float alpha)
+	void begin_frame()
 	{
-		float color[4];
-
-		color[0] = red;
-		color[1] = green;
-		color[2] = blue;
-		color[3] = alpha;
+		float color[] = {(float)glm::sin(glfwGetTime()), 0.5f, 0.8f, 1.f};
 
 		_device_context->ClearRenderTargetView(_render_target_view, color);
 		_device_context->ClearDepthStencilView(_depth_stencil_view, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
 
+		color_shader.bind();
+
+		D3D11_MAPPED_SUBRESOURCE msr;
+		_device_context->Map(_camera_buffer, 0u, D3D11_MAP_WRITE_DISCARD, 0u, &msr);
+
+		memcpy(msr.pData, &camera::get_camera_buffer(), sizeof(camera::get_camera_buffer()));
+
+		_device_context->Unmap(_camera_buffer, 0u);
 	}
 
 	void end_frame()
@@ -295,15 +325,6 @@ namespace orbit::graphics::d3d11::core
 		if (_vsync_enabled)
 			_swap_chain->Present(1, 0);
 		else _swap_chain->Present(0, 0);
-	}
-
-	void update()
-	{
-		begin_frame(0.5f,0.2f, 0.2f, 1.f);
-		color_shader.bind();
-		triangle.bind_buffers();
-		_device_context->DrawIndexed(3, 0, 0);
-		end_frame();
 	}
 
 	void shutdown()

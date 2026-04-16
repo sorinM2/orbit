@@ -5,5 +5,6 @@
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
     if (!orbit::system::initialize(hInst, cmdshow)) return false;
-    return orbit::system::run();
+    orbit::system::run();
+    return 0;
 }

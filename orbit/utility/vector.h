@@ -7,6 +7,8 @@
 #include <memory>
 #include "iterator.h"
 #include <iostream>
+#include <mutex>
+
 namespace utl
 {
 
@@ -23,25 +25,15 @@ namespace utl
 			reserve(1);
 		}
 
-		vector(vector& other)
-		{
-			*this = other;
-		}
-
-		vector(const vector& other)
-		{
-			*this = other;
-		}
-
 		constexpr vector& operator=(vector& other)
 		{
 			if (this == &other)
 				return *this;
 
 			clear();
-			reserve(other.size());
+			reserve(other.allocated());
 
-			for (unsigned int i = 0; i < other.size(); ++i)
+			for (unsigned int i = 0; i < other.allocated(); ++i)
 			{
 				T& c = *(other.data() + i);
 				if constexpr (disable_tombstoning)
@@ -49,8 +41,8 @@ namespace utl
 				else if (!other.is_tombstone(&c))
 					emplace_back(c);
 				else {
-					memset(end(), 'd', sizeof(T));
 					_size++;
+					mark_as_tombstone(internal_begin() + i);
 				}
 			}
 
@@ -72,12 +64,23 @@ namespace utl
 				else if (!other.is_tombstone(&c))
 					emplace_back(c);
 				else {
-					memset(end(), 'd', sizeof(T));
 					_size++;
+					mark_as_tombstone(internal_begin() + i);
 				}
 			}
 			return *this;
 		}
+
+		vector(vector& other)
+		{
+			*this = other;
+		}
+
+		vector(const vector& other)
+		{
+			*this = other;
+		}
+
 		vector(vector&& other) noexcept
 		{
 			*this = std::move(other);
@@ -125,7 +128,7 @@ namespace utl
 		constexpr void emplace_back(Targs&&... args)
 		{
 			controlled_reserve(_size + 1);
-			new (_data + _size) T(std::forward<Targs>(args)...);
+			T* p = std::launder(new (_data + _size) T(std::forward<Targs>(args)...));
 			++_size;
 		}
 
@@ -176,6 +179,7 @@ namespace utl
 			for (T* it = end() + spaces - 1; it >= position + spaces; --it)
 			{
 				new (it) T(std::move(*(it - spaces)));
+				it = std::launder(it);
 				(it - spaces)->~T();
 			}
 
@@ -200,16 +204,18 @@ namespace utl
 			for (T* it = end(); it > position; --it)
 			{
 				new (it) T(std::move(*(it - 1)));
+				it = std::launder(it);
 				(it - 1)->~T();
 			}
 
 			new (position) T(std::forward<Targs>(args)...);
+			position = std::launder(position);
 
 			++_size;
 		}
 
 		template<typename... Targs>
-		unsigned int emplace_tombstone(Targs&&... args)
+		constexpr unsigned int emplace_tombstone(Targs&&... args)
 		{
 			static_assert(!disable_tombstoning);
 			if (_first_tombstone < 0 or _first_tombstone >= _size or _tombstones < _min_tombstones)
@@ -226,6 +232,7 @@ namespace utl
 			_first_tombstone = *reinterpret_cast<int*>(position);
 
 			new (position) T(std::forward<Targs>(args)...);
+			position = std::launder(position);
 
 			--_tombstones;
 
@@ -236,7 +243,7 @@ namespace utl
 		{
 			erase(position, position + 1);
 		}
-#include <iostream>
+
 		constexpr void erase(T* range_start, T* range_end)
 		{
 			assert(_data);
@@ -289,7 +296,7 @@ namespace utl
 			else for (unsigned int inc = 0; inc < _size; ++inc)
 				if (!is_tombstone(_data + inc))
 				{
-					new (new_buffer + inc) T(std::move(*(_data + inc)));
+					auto *p = std::launder(new (new_buffer + inc) T(std::move(*(_data + inc))));
 					(_data + inc)->~T();
 				}
 			if constexpr (!disable_tombstoning)
@@ -426,9 +433,20 @@ namespace utl
 			static_assert(!disable_tombstoning);
 			assert(position >= _data && position < _data + _size);
 
-			*reinterpret_cast<int*>(position) = _first_tombstone;
-			_first_tombstone = position - _data;
-			*(_is_tombstone + _first_tombstone) = true;
+			if (_first_tombstone != -1)
+			{
+				int* p = std::launder(reinterpret_cast<int*>(_data + _last_tombstone));
+				*p = position - _data;
+			}
+			else
+			{
+				int* p = std::launder(reinterpret_cast<int*>(position));
+				*p = -1;
+				_first_tombstone = position - _data;
+			}
+
+			_last_tombstone = position - _data;
+			*(_is_tombstone + _last_tombstone) = true;
 			++_tombstones;
 		}
 
@@ -440,6 +458,8 @@ namespace utl
 		bool* _is_tombstone = nullptr;
 		//TODO use a queue
 		int _first_tombstone = -1;
+		int _last_tombstone = -1;
+
 		unsigned int _tombstones = 0;
 	};
 

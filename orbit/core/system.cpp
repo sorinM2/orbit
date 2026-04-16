@@ -2,18 +2,30 @@
 #include "platform/platform_common.h"
 #include "application.h"
 
+#include "GLFWcommon.h"
+#include "input.h"
+#include "orbit/logger/logger.h"
+
 namespace orbit::system
 {
 	namespace
 	{
-		HWND hwnd = 0;
-		unsigned int width = 960, height = 540;
+		GLFWwindow* _window;
+		int _width = 960, _height = 540;
 	}
 
+	GLFWwindow* get_window()
+	{
+		return _window;
+	}
+
+
+#ifdef WIN32
 	HWND get_main_hwnd()
 	{
-		return hwnd;
+		return glfwGetWin32Window(_window);
 	}
+#endif
 
 	int get_monitor_width()
 	{
@@ -25,102 +37,52 @@ namespace orbit::system
 		return GetSystemMetrics(SM_CYSCREEN);
 	}
 
+	void window_size_callback(GLFWwindow* window, int width, int height)
+	{
+		_width = width;
+		_height = height;
+	}
+
+	int get_window_width()
+	{
+		return _width;
+	}
+
+	int get_window_height()
+	{
+		return _height;
+	}
+
 	bool initialize(HINSTANCE instance_handle, int show)
 	{
-		WNDCLASS wc;
+		logger::initialize();
 
-		wc.style = CS_HREDRAW | CS_HREDRAW;
-		wc.lpfnWndProc = window_proc;
-		wc.cbClsExtra = 0;
-		wc.cbWndExtra = 0;
-		wc.hInstance = instance_handle;
-		wc.hIcon = NULL;
-		wc.hCursor = NULL;
-		wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-		wc.lpszMenuName = NULL;
-		wc.lpszClassName = "default class";
+		glfwInit();
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		_window = glfwCreateWindow(_width, _height, "fereastra glfw", nullptr, nullptr);
 
-		if (!RegisterClass(&wc))
-		{
-			MessageBox(0, "Register class failed!", 0, 0);
-			return false;
-		}
+		glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		input::initialize(_window);
 
-		hwnd = CreateWindowEx(0, "default class", "orbit", WS_OVERLAPPED | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, instance_handle, 0);
-
-		if (!hwnd)
-		{
-			MessageBox(0, "Failed to create window!", 0, 0);
-			return false;
-		}
+		glfwSetCursorPosCallback(_window, input::cursor_position_callback);
+		glfwSetKeyCallback(_window, input::key_callback);
+		glfwSetWindowSizeCallback(_window, window_size_callback);
 
 		application::initialize();
-
-		ShowWindow(hwnd, show);
-		UpdateWindow(hwnd);
-
-
+		OT_WARN("Spdlog functioneaza {}!", 1.23f);
 		return true;
 	}
 
-	int run()
+	void run()
 	{
-		MSG msg = { 0 };
-
-		bool bRet = 1;
-
-		while ((bRet = GetMessage(&msg, 0, 0, 0)) != 0)
+		while (!glfwWindowShouldClose(_window))
 		{
-			if (bRet == -1)
-			{
-				MessageBox(0, "GetMessage FAILED", "Error", MB_OK);
-				break;
-			}
-			else
-			{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-			}
-
+			glfwPollEvents();
 			application::update();
-			
 		}
+		glfwDestroyWindow(_window);
+		glfwTerminate();
 		application::shutdown();
-
-		return int(msg.wParam);
 	}
 
-	LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
-	{
-		switch (msg)
-		{
-		//case WM_MOVE:
-		//{
-		//	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-		//	MONITORINFOEX monitor_info;
-		//	monitor_info.cbSize = sizeof(MONITORINFOEX);
-		//	GetMonitorInfo(monitor, &monitor_info);
-		//	OutputDebugString("Moved window to monitor:\n");
-		//	OutputDebugString(monitor_info.szDevice);
-		//	OutputDebugString("\n");
-		//	return 0;
-		//}
-		case WM_SIZE:
-			//application::restart_graphics();
-			return 0;
-		case WM_DISPLAYCHANGE:
-			MessageBox(0, "Hello world!", "Hello", MB_OK);
-			return 0;
-		case WM_KEYDOWN:
-			if (wparam = VK_ESCAPE)
-				DestroyWindow(hwnd);
-			return 0;
-		case WM_DESTROY:
-			PostQuitMessage(0);
-			return 0;
-		}
-
-		return DefWindowProc(hwnd, msg, wparam, lparam);
-		
-	}
 }

@@ -15,7 +15,8 @@ namespace orbit::graphics::d3d11::core
 	ID3D11DeviceContext* get_device_context();
 
 	bool initialize();
-	void update();
+	void begin_frame();
+	void end_frame();
 	void shutdown();
 	void shutdown_device();
 }

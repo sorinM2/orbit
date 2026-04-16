@@ -1,9 +1,55 @@
 #include "mesh.h"
 #include "..\d3d11core.h"
 #include "..\d3d11common.h"
+#include <unordered_map>
 
-namespace orbit::graphics::d3d11::content
+
+namespace orbit::graphics::d3d11::content::mesh
 {
+	namespace
+	{
+		using vertex = hl::mesh_type::vertex;
+	}
+
+	namespace
+	{
+		list_type meshes;
+		std::unordered_map<hl::handle_type, handle_type, hl::hash_type> hl_handles;
+	}
+
+	void add_mesh(const hl::handle_type& hl_handle)
+	{
+		assert(!hl_handles.contains(hl_handle));
+		if (hl_handles.contains(hl_handle))
+			throw std::logic_error("low level mesh already exists");
+
+		handle_type mesh_handle = meshes.emplace();
+		mesh& mesh = meshes.get(mesh_handle);
+		hl::mesh_type& hl_mesh = ::orbit::content::mesh::get_mesh(hl_handle);
+		mesh.initialize(hl_mesh);
+
+		hl_handles[hl_handle] = mesh_handle;
+	}
+
+	void render_mesh(const hl::handle_type& hl_handle)
+	{
+		assert(hl_handles.contains(hl_handle));
+		if (!hl_handles.contains(hl_handle))
+			throw std::logic_error("low level mesh doesn't exists");
+		mesh& mesh = meshes.get(hl_handles[hl_handle]);
+		mesh.bind_buffers();
+		mesh.render();
+	}
+
+	void release_mesh(const hl::handle_type& hl_handle)
+	{
+		assert(hl_handles.contains(hl_handle));
+		if (!hl_handles.contains(hl_handle))
+			throw std::logic_error("low level mesh doesn't exists");
+		meshes.erase(hl_handles[hl_handle]);
+		hl_handles.erase(hl_handle);
+	}
+
 	void mesh::bind_buffers()
 	{
 		unsigned int stride = sizeof(vertex);
@@ -14,8 +60,11 @@ namespace orbit::graphics::d3d11::content
 		device_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	}
 
-	void mesh::initialize()
+	void mesh::initialize(const hl::mesh_type& hl_mesh)
 	{
+		auto& _vertices = hl_mesh._vertices;
+		auto& _indices = hl_mesh._indices;
+
 		assert(!_vertex_buffer && !_index_buffer);
 		assert(_vertices.size() && _indices.size());
 
@@ -49,8 +98,14 @@ namespace orbit::graphics::d3d11::content
 		DXCALL(device->CreateBuffer(&vertex_buffer_desc, &vertex_bufer_data, &_vertex_buffer));
 		DXCALL(device->CreateBuffer(&index_buffer_desc, &index_buffer_data, &_index_buffer));
 
-		_indices.clear();
-		_vertices.clear();
+		_indices_count = _indices.size();
+		_vertices_count = _vertices.size();
+	}
+
+	void mesh::render()
+	{
+		ID3D11DeviceContext* device_context = core::get_device_context();
+		device_context->DrawIndexed(_indices_count, 0, 0);
 	}
 
 	void mesh::release()
