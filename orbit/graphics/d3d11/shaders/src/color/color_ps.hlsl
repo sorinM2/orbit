@@ -8,7 +8,7 @@ struct pixel_input_type
     float2 uv : TEXCOORD;
 };
 
-float4 ps_main(pixel_input_type input) : SV_TARGET 
+float4 ps_main(pixel_input_type input) : SV_TARGET
 {
     float4 texture_color;
     texture_color = shader_texture.Sample(sampler_type, float2(input.uv.x, 1.f - input.uv.y));

@@ -6,6 +6,8 @@
 #include "input.h"
 #include "orbit/logger/logger.h"
 
+#include "../graphics/common/platform.h"
+
 namespace orbit::system
 {
 	namespace
@@ -41,6 +43,9 @@ namespace orbit::system
 	{
 		_width = width;
 		_height = height;
+
+		auto platform = graphics::platform::get_platform();
+		platform.resize();
 	}
 
 	int get_window_width()
@@ -61,7 +66,7 @@ namespace orbit::system
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		_window = glfwCreateWindow(_width, _height, "fereastra glfw", nullptr, nullptr);
 
-		glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		//glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		input::initialize(_window);
 
 		glfwSetCursorPosCallback(_window, input::cursor_position_callback);
@@ -69,17 +74,22 @@ namespace orbit::system
 		glfwSetWindowSizeCallback(_window, window_size_callback);
 
 		application::initialize();
-		OT_WARN("Spdlog functioneaza {}!", 1.23f);
 		return true;
 	}
 
 	void run()
 	{
-		while (!glfwWindowShouldClose(_window))
-		{
-			glfwPollEvents();
-			application::update();
-		}
+		glfwPollEvents();
+		application::update();
+	}
+
+	bool should_close()
+	{
+		return glfwWindowShouldClose(_window);
+	}
+
+	void shutdown()
+	{
 		glfwDestroyWindow(_window);
 		glfwTerminate();
 		application::shutdown();

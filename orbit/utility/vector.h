@@ -132,14 +132,14 @@ namespace utl
 			++_size;
 		}
 
-		constexpr decltype(auto) begin()
+		constexpr decltype(auto) begin() const
 		{
 			if constexpr (!disable_tombstoning)
 				return iterator::iterator<vector, T, &vector::is_tombstone>(_data, this);
 			else return iterator::iterator<vector, T>(_data);
 		}
 
-		constexpr decltype(auto) end()
+		constexpr decltype(auto) end() const
 		{
 			if constexpr (!disable_tombstoning)
 				return iterator::iterator<vector, T, &vector::is_tombstone>(_data + _size, this);
@@ -418,7 +418,7 @@ namespace utl
 			::operator delete(_data);
 		}
 
-		constexpr bool is_tombstone(T* position)
+		constexpr bool is_tombstone(T* position) const
 		{
 			static_assert(!disable_tombstoning);
 			if (position < _data or position >= _data + _size)

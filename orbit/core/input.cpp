@@ -1,8 +1,5 @@
 #include "input.h"
 #include <unordered_map>
-#include <format>
-#include <string>
-#include "orbit/logger/logger.h"
 
 namespace orbit::input
 {
@@ -33,8 +30,6 @@ namespace orbit::input
     {
         _cursor_position._xpos = xpos - initial_cursor_position._xpos;
         _cursor_position._ypos = ypos - initial_cursor_position._ypos;
-
-        logger::get_logger().info("Mouse position: {}, {}", _cursor_position._xpos, _cursor_position._ypos);
     }
 
     bool get_key(int key)

@@ -2,6 +2,10 @@
   <dictionary name="project">
     <words>
       <w>nominmax</w>
+      <w>rtvs</w>
+      <w>sint</w>
+      <w>srvs</w>
+      <w>unorm</w>
     </words>
   </dictionary>
 </component>

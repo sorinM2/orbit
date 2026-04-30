@@ -1,10 +1,12 @@
 #include "application.h"
 
 #include "platform/platform_common.h"
-#include "orbit/graphics/platform.h"
+#include "../graphics/common/platform.h"
 #include "orbit/content/mesh.h"
 #include "orbit/content/model.h"
 #include "orbit/content/texture.h"
+#include "orbit/ecs/ecs.h"
+#include "orbit/ecs/components.h"
 
 namespace orbit::application
 {
@@ -61,7 +63,7 @@ namespace orbit::application
 		bool result;
 
 		graphics::platform::set_platform(graphics::platform::platform::d3d11);
-		result = graphics::platform::initialize();
+		result = graphics::platform::initialize(false);
 	
 		if (!result)
 		{
@@ -95,19 +97,36 @@ namespace orbit::application
 	void restart_graphics()
 	{
 		graphics::platform::shutdown();
-		graphics::platform::initialize();
+		graphics::platform::initialize(false);
 	}
 
 	void update()
 	{
 		graphics::platform::begin_frame();
 		//content::mesh::render(triangle_handle);
-		content::model::render_model(model_handle);
+		//content::model::render_model(model_handle);
+
+		entt::registry& reg = ecs::get_instance()->registry;
+		auto drawables = reg.view<components::transform, components::geometry>();
+
+		drawables.each([](const auto entity, auto& transform, auto& geometry)
+		{
+			if ( geometry._handle.is_valid() )
+				content::model::render_model(geometry._handle, transform);
+		});
+
+		graphics::platform::begin_editor();
+	}
+
+	void render()
+	{
 		graphics::platform::end_frame();
 	}
 
 	void shutdown()
 	{
+		content::texture::remove_texture(texture_handle);
+		content::model::remove_model(model_handle);
 		graphics::platform::shutdown();
 	}
 }

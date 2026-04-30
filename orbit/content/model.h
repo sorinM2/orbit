@@ -6,35 +6,26 @@
 #include "orbit/utility/freelist.h"
 #include <filesystem>
 
+#include <unordered_set>
+
 struct aiScene;
+
+namespace orbit::components
+{
+	struct transform;
+}
 
 namespace orbit::content::model
 {
 	class model
 	{
 	public:
-		struct world_view_projection_buffer
-		{
-			glm::mat4 world;
-		} _wvp_buffer;
-
-		struct transform
-		{
-			glm::vec3 position;
-			glm::vec3 rotation;
-			glm::vec3 scale;
-		} _transform;
-
 		explicit model(const std::filesystem::path& model_path);
-		~model();
 
-		void set_position(glm::vec3 position);
-		void set_rotation(glm::vec3 rotation);
-		void set_scale(glm::vec3 scale);
+		void render(const components::transform& transform) const;
+		void Release();
 
-		void render();
-	private:
-		void compute_world_matrix();
+		[[nodiscard]] std::string get_name() const { return _path.filename().string(); }
 
 	private:
 		texture::handle_type _texture;
@@ -46,7 +37,12 @@ namespace orbit::content::model
 
 	DEFINE_LIST_TYPE(model)
 
+	model& get_model(handle_type handle);
 	handle_type add_model(const std::filesystem::path& model_path);
 	void remove_model(const handle_type& model_handle);
-	void render_model(const handle_type& model_handle);
+	void render_model(const handle_type& model_handle, const components::transform& transform);
+
+	const list_type& get_models_view();
+	const std::unordered_set<handle_type, hash_type>& get_handles();
+
 }

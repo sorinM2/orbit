@@ -21,8 +21,6 @@ namespace orbit::content::texture
         stbi_info(path.string().c_str(), &_width, &_height, &channels);
     }
 
-    texture::texture(unsigned char* data, int width, int height) : _data{data}, _width{width}, _height{height} {}
-
     handle_type add_texture(const std::filesystem::path& path)
     {
         handle_type handle = _textures.emplace(path);
@@ -31,17 +29,10 @@ namespace orbit::content::texture
         return handle;
     }
 
-    handle_type add_texture(unsigned char* data, int width, int height)
-    {
-        handle_type handle = _textures.emplace(data, width, height);
-        _handles.insert(handle);
-        _platform.add(handle);
-        return handle;
-    }
-
     void remove_texture(const handle_type& handle)
     {
-        assert(_textures.is_alive(handle));
+        if(!_textures.is_alive(handle))
+            return;
         _platform.release(handle);
         _textures.erase(handle);
         _handles.erase(handle);

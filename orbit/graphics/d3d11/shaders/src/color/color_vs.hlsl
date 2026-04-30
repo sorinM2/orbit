@@ -28,7 +28,7 @@ pixel_input_type vs_main(vertex_input_type input)
     pixel_input_type output;
     output.normal = float4(input.normal, 1.f);
 
-    output.position = float4(input.position, 1.f);
+    output.position = mul(float4(input.position, 1.f), world_matrix);
     output.position = mul(output.position, view_matrix);
     output.position = mul(output.position, projection_matrix);
 

@@ -1,6 +1,8 @@
 #pragma once
 #include "orbit/content/texture.h"
 #include <d3d11.h>
+#include "orbit/graphics/common/texture.h"
+#include "orbit/graphics/common/shader_resource.h"
 
 namespace orbit::graphics::d3d11::content::texture
 {
@@ -15,10 +17,13 @@ namespace orbit::graphics::d3d11::content::texture
     public:
         void initialize(const hl::handle_type& hl_handle);
         void bind();
-        void release();
+        void Release();
     private:
-        ID3D11Texture2D* _texture;
-        ID3D11ShaderResourceView* _texture_srv;
+        // ID3D11Texture2D* _texture = nullptr;
+        // ID3D11ShaderResourceView* _texture_srv = nullptr;
+
+        texture2D* _texture = nullptr;
+        shader_resource* _shader_resource = nullptr;
     };
 
     DEFINE_LIST_TYPE(texture)

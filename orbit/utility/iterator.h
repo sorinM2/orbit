@@ -3,12 +3,12 @@
 namespace utl::iterator
 {
 
-	template<typename C, typename T, bool (C::* comp)(T*) = nullptr>
+	template<typename C, typename T, bool (C::* comp)(T*) const = nullptr>
 	class iterator
 	{
 	public:
 		explicit iterator(T* ptr) : _ptr{ ptr } {}
-		explicit iterator(T* ptr, C* container) : _ptr{ ptr }, _container{ container }
+		explicit iterator(T* ptr,const C* container) : _ptr{ ptr }, _container{ container }
 		{
 			if constexpr (comp)
 				while ((_container->*comp)(_ptr))
@@ -48,7 +48,7 @@ namespace utl::iterator
 		operator T* () const { return _ptr; }
 	private:
 		T* _ptr;
-		C* _container;
+		const C* _container;
 	};
 
 }

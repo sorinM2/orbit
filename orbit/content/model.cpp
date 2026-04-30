@@ -7,21 +7,30 @@
 #include <fstream>
 #include <queue>
 
+#include "../graphics/common/platform.h"
+
+#include "orbit/ecs/components.h"
+
 namespace orbit::content::model
 {
 	namespace
 	{
 		list_type _models;
+		std::unordered_set<handle_type, hash_type> _handles;
+	}
+
+	const list_type& get_models_view()
+	{
+		return _models;
+	}
+
+	const std::unordered_set<handle_type, hash_type>& get_handles()
+	{
+		return _handles;
 	}
 
 	model::model(const std::filesystem::path& model_path) : _path(model_path)
 	{
-		_transform.scale = glm::vec3(1.f, 1.f, 1.f);
-		_transform.rotation = glm::vec3(0.f, 0.f, 0.f);
-		_transform.position = glm::vec3(0.f, 0.f, 0.f);
-
-		compute_world_matrix();
-
 		Assimp::Importer importer;
 		const aiScene* scene = importer.ReadFile(model_path.string().c_str(),
 			aiProcess_CalcTangentSpace |
@@ -32,10 +41,11 @@ namespace orbit::content::model
 		process_scene(scene);
 	}
 
-	model::~model()
+	void model::Release()
 	{
-		// for ( auto& mesh_handle : _meshes )
-		// 	mesh::remove_mesh(mesh_handle);
+		for ( auto mesh_handle : _meshes )
+			mesh::remove_mesh(mesh_handle);
+		texture::remove_texture(_texture);
 	}
 
 
@@ -61,7 +71,7 @@ namespace orbit::content::model
 			for ( int i = 0; i < no_vertices; ++i )
 			{
 				mesh::mesh::vertex vertex{};
-				vertex.position = glm::vec3(ai_mesh->mVertices[i].x, ai_mesh->mVertices[i].y, ai_mesh->mVertices[i].z);
+				vertex.position = glm::vec3(ai_mesh->mVertices[i].x * 0.1, ai_mesh->mVertices[i].y * 0.1, ai_mesh->mVertices[i].z * 0.1);
 				vertex.normal = glm::vec3(ai_mesh->mNormals[i].x, ai_mesh->mNormals[i].y, ai_mesh->mNormals[i].z);
 
 				vertex.uv = glm::vec2(ai_mesh->mTextureCoords[0][i].x, ai_mesh->mTextureCoords[0][i].y);
@@ -130,41 +140,10 @@ namespace orbit::content::model
 		}
 	}
 
-	void model::set_position(glm::vec3 position)
-	{
-		if (position == _transform.position)
-			return;
-	}
-
-	void model::set_rotation(glm::vec3 rotation)
-	{
-		if (rotation == _transform.rotation)
-			return;
-	}
-
-	void model::set_scale(glm::vec3 scale)
-	{
-		if (scale == _transform.scale)
-			return;
-	}
-
-	void model::compute_world_matrix()
-	{
-		glm::mat4& world_matrix = _wvp_buffer.world;
-
-		world_matrix = glm::mat4(1.f);
-		
-		world_matrix = glm::translate(world_matrix, _transform.position);
-		world_matrix = glm::rotate(world_matrix, _transform.rotation.x, glm::vec3(1.f, 0.f, 0.f));
-		world_matrix = glm::rotate(world_matrix, _transform.rotation.y, glm::vec3(0.f, 1.f, 0.f));
-		world_matrix = glm::rotate(world_matrix, _transform.rotation.z, glm::vec3(0.f, 0.f, 1.f));
-
-		world_matrix = glm::scale(world_matrix, _transform.scale);
-	}
-
 	handle_type add_model(const std::filesystem::path& model_path)
 	{
 		handle_type handle = _models.emplace(model_path);
+		_handles.emplace(handle);
 		return handle;
 	}
 
@@ -173,21 +152,47 @@ namespace orbit::content::model
 		if( !_models.is_alive(model_handle) )
 			return;
 
+		model& model = _models.get(model_handle);
+		model.Release();
+
 		_models.erase(model_handle);
+
+		_handles.erase(model_handle);
 	}
 
-	void render_model(const handle_type& model_handle)
+	void render_model(const handle_type& model_handle,const components::transform& transform)
 	{
 		if( !_models.is_alive(model_handle) )
 			return;
 
-		_models.get(model_handle).render();
+		_models.get(model_handle).render(transform);
 	}
 
-	void model::render()
+	model& get_model(handle_type handle)
+	{
+		return _models.get(handle);
+	}
+
+	void model::render(const components::transform& transform) const
 	{
 		if (_texture.is_valid())
 			texture::bind_texture(_texture);
+
+		auto platform_desc = graphics::platform::get_platform();
+		glm::mat4 world_matrix = glm::mat4(1.f);
+
+		world_matrix = glm::translate(world_matrix, transform.position);
+
+		world_matrix = glm::rotate(world_matrix, glm::radians(transform.rotation.z), glm::vec3(0.f, 0.f, 1.f));
+		world_matrix = glm::rotate(world_matrix, glm::radians(transform.rotation.y), glm::vec3(0.f, 1.f, 0.f));
+		world_matrix = glm::rotate(world_matrix, glm::radians(transform.rotation.x), glm::vec3(1.f, 0.f, 0.f));
+
+		world_matrix = glm::scale(world_matrix, transform.scale);
+
+		world_matrix = glm::transpose(world_matrix);
+
+		platform_desc.mesh.bind_world(world_matrix);
+
 		for ( auto& mesh_handle : _meshes )
 			mesh::render(mesh_handle);
 	}

@@ -136,6 +136,8 @@ namespace utl
 
 		constexpr bool is_alive(id_handle id)
 		{
+			if ( !id.is_valid() ) return false;
+
 			id::id_type internal_id = id.get_id();
 			id::id_type index = id::index(internal_id);
 			id::generation_type generation = id::generation(internal_id);
@@ -145,12 +147,12 @@ namespace utl
 			return _generations[index] == generation;
 		}
 
-		constexpr decltype(auto) begin()
+		constexpr decltype(auto) begin() const
 		{
 			return _container.begin();
 		}
 
-		constexpr decltype(auto) end()
+		constexpr decltype(auto) end() const
 		{
 			return _container.end();
 		}

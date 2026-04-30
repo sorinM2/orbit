@@ -32,6 +32,8 @@ namespace orbit::content::mesh
 		std::function<void(const handle_type&)> add;
 		std::function<void(const handle_type&)> render;
 		std::function<void(const handle_type&)> release;
+
+		std::function<void(const glm::mat4&)> bind_world;
 	};
 
 	void set_platform(const platform_descriptor& platform_descriptor);

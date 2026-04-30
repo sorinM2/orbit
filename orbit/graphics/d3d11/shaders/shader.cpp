@@ -143,7 +143,13 @@ namespace orbit::graphics::d3d11::shaders
 		device_context->VSSetShader(_vertex_shader, 0, 0);
 		device_context->PSSetShader(_pixel_shader, 0, 0);
 		device_context->IASetInputLayout(_input_layout);
-
-
 	}
+
+	void shader::Release()
+	{
+		util::safe_release(_vertex_shader);
+		util::safe_release(_pixel_shader);
+		util::safe_release(_input_layout);
+	}
+
 }

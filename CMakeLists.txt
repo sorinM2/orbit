@@ -1,5 +1,8 @@
 ﻿cmake_minimum_required (VERSION 3.10)
 
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
+
 IF(WIN32)
 add_compile_definitions(NOMINMAX)
 add_compile_definitions(WIN32_LEAN_AND_MEAN)
@@ -12,7 +15,10 @@ endif()
 
 set(CMAKE_CXX_STANDARD 23)
 
+add_subdirectory(editor)
 add_subdirectory (orbit)
-add_subdirectory (glfw)
 add_subdirectory(glm)
 add_subdirectory(assimp)
+add_subdirectory(glfw)
+add_subdirectory(imgui)
+add_subdirectory(entt)

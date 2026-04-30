@@ -20,4 +20,8 @@ namespace orbit::system
 	int get_window_width();
 	int get_window_height();
 
+	bool should_close();
+	void shutdown();
+
+
 }

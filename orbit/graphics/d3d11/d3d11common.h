@@ -2,19 +2,11 @@
 #include <d3d11.h>
 #include <dxgi1_6.h>
 #include <format>
+#include <cassert>
+#include "orbit/graphics/common/util.h"
 
-namespace orbit::graphics::d3d11::util
+namespace orbit::graphics::d3d11
 {
-	template<typename T>
-	void safe_release(T*& resource)
-	{
-		if (resource)
-		{
-			resource->Release();
-			resource = nullptr;
-		}
-	}
-
 	template<typename T>
 	void name_com_object(T* resource, const char* name)
 	{

@@ -32,13 +32,19 @@ namespace orbit::graphics::camera
 	void update()
 	{
 		float roll = 0.f, yaw = 0.f;
+		float movement_multiplier = 1.f;
 
-		auto cursor_pos = input::get_cursor_position();
+		if ( input::get_key(GLFW_KEY_LEFT_SHIFT) )
+			movement_multiplier = 5.f;
 
-		float cursor_multiplier = 0.001;
-
-		roll = (_last_position._ypos - cursor_pos._ypos) * cursor_multiplier;
-		yaw = (_last_position._xpos - cursor_pos._xpos) * cursor_multiplier;
+		if ( input::get_key(GLFW_KEY_UP))
+			roll += 0.015f;
+		if ( input::get_key(GLFW_KEY_DOWN))
+			roll -= 0.015f;
+		if ( input::get_key(GLFW_KEY_LEFT))
+			yaw += 0.015f;
+		if ( input::get_key(GLFW_KEY_RIGHT))
+			yaw -= 0.015f;
 
 		total_roll += roll;
 		float old_total_roll = total_roll;
@@ -54,18 +60,18 @@ namespace orbit::graphics::camera
 		_right = glm::cross(_forward, _up);
 
 		if ( input::get_key(GLFW_KEY_W))
-			_position += _forward * 0.02f;
+			_position += _forward * 0.02f * movement_multiplier;
 		if ( input::get_key(GLFW_KEY_S))
-			_position += _forward * -0.02f;
+			_position += _forward * -0.02f * movement_multiplier;
 		if ( input::get_key(GLFW_KEY_A))
-			_position += _right * -0.02f;
+			_position += _right * -0.02f * movement_multiplier;
 		if ( input::get_key(GLFW_KEY_D))
-			_position += _right * 0.02f;
+			_position += _right * 0.02f * movement_multiplier;
 
 		if ( input::get_key(GLFW_KEY_Z))
-			_position += _up * 0.02f;
+			_position += _up * 0.02f * movement_multiplier;
 		if ( input::get_key(GLFW_KEY_X))
-			_position += _up * -0.02f;
+			_position += _up * -0.02f * movement_multiplier;
 
 		initialize();
 	}

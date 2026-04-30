@@ -9,7 +9,6 @@ namespace orbit::content::texture
     {
     public:
         explicit texture(const std::filesystem::path& path);
-        texture(unsigned char* data, int width, int height);
 
         int get_width() const { return _width;}
         int get_height() const { return _height;}

@@ -10,6 +10,7 @@ namespace orbit::graphics::d3d11::shaders
 	public:
 		bool initialize();
 		void bind();
+		void Release();
 	public:
 		std::string _vertex_shader_entry_point;
 		std::string _pixel_shader_entry_point;
@@ -17,9 +18,9 @@ namespace orbit::graphics::d3d11::shaders
 		std::filesystem::path _vertex_shader_path;
 		std::filesystem::path _pixel_shader_path;
 	private:
-		ID3D11VertexShader* _vertex_shader;
-		ID3D11PixelShader* _pixel_shader;
+		ID3D11VertexShader* _vertex_shader = nullptr;
+		ID3D11PixelShader* _pixel_shader = nullptr;
 
-		ID3D11InputLayout* _input_layout;
+		ID3D11InputLayout* _input_layout = nullptr;
 	};
 }

@@ -13,3 +13,7 @@
 [submodule "imgui"]
 	path = imgui
 	url = https://github.com/sorinM2/imgui.git
+
+[submodule "entt"]
+	path = entt
+	url = https://github.com/skypjack/entt.git

@@ -5,8 +5,6 @@
 
 namespace orbit::graphics::d3d11::content::mesh
 {
-
-
 	namespace hl
 	{
 		using mesh_type = ::orbit::content::mesh::mesh;
@@ -19,7 +17,7 @@ namespace orbit::graphics::d3d11::content::mesh
 		void bind_buffers();
 		void initialize(const hl::mesh_type& hl_mesh);
 		void render();
-		void release();
+		void Release();
 	private:
 
 		unsigned int _vertices_count;
@@ -35,4 +33,7 @@ namespace orbit::graphics::d3d11::content::mesh
 	void render_mesh(const hl::handle_type& hl_handle);
 	void release_mesh(const hl::handle_type& hl_handle);
 
+	void initialize();
+	void bind_world(const glm::mat4& world_matrix);
+	void shutdown();
 }
