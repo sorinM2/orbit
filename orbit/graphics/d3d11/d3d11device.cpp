@@ -1,11 +1,102 @@
 #include "d3d11device.h"
 
+#include <ranges>
+
 #include "d3d11sampler.h"
 #include "d3d11shader_resource.h"
 #include "orbit/utility/vector.h"
 
 namespace orbit::graphics
 {
+    using idxgi_factory = IDXGIFactory7;
+    using idxgi_adapter = IDXGIAdapter4;
+
+    namespace
+    {
+        const D3D_FEATURE_LEVEL supported_feature_levels[] = {
+            D3D_FEATURE_LEVEL_11_1,
+            D3D_FEATURE_LEVEL_11_0,
+            D3D_FEATURE_LEVEL_10_1,
+            D3D_FEATURE_LEVEL_10_0,
+        };
+
+        idxgi_adapter* get_best_adapter(idxgi_factory* dxgi_factory)
+        {
+            int adapter_index = 0, best_index = 0, best_index_feature_level = -1;
+            idxgi_adapter* adapter = nullptr;
+
+            while (dxgi_factory->EnumAdapters1(adapter_index, (IDXGIAdapter1**)&adapter) != DXGI_ERROR_NOT_FOUND)
+            {
+                DXGI_ADAPTER_DESC3 adapter_desc;
+                DXCALL(adapter->GetDesc3(&adapter_desc));
+
+                D3D_FEATURE_LEVEL maximum_feature_level;
+
+                DXCALL(D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, NULL, supported_feature_levels, _countof(supported_feature_levels), D3D11_SDK_VERSION, NULL, &maximum_feature_level, NULL));
+
+                for ( unsigned int i = 0; i < _countof(supported_feature_levels); ++i )
+                    if (supported_feature_levels[i] == maximum_feature_level and i > best_index_feature_level)
+                    {
+                        best_index_feature_level = i;
+                        best_index = adapter_index;
+                    }
+
+                adapter->Release();
+                adapter = nullptr;
+
+                ++adapter_index;
+            }
+
+            if (adapter_index == 0)
+                return nullptr;
+
+            DXCALL(dxgi_factory->EnumAdapters1(best_index, (IDXGIAdapter1**)&adapter));
+
+            return adapter;
+        }
+    }
+
+    d3d11_factory::d3d11_factory()
+    {
+        DXCALL(CreateDXGIFactory1(__uuidof(idxgi_factory), (void**)&_internal_factory));
+        _internal_adapter = get_best_adapter(_internal_factory);
+    }
+
+    d3d11_rendering_device::d3d11_rendering_device(d3d11_factory* factory, rendering_device_context** context)
+    {
+        unsigned int creation_flags = 0;
+
+#ifdef _DEBUG
+        creation_flags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
+        ID3D11DeviceContext* internal_device_context;
+        DXCALL(D3D11CreateDevice(factory->get_internal_adapter(), D3D_DRIVER_TYPE_UNKNOWN, NULL, creation_flags, supported_feature_levels,
+            _countof(supported_feature_levels), D3D11_SDK_VERSION, &_internal_device, nullptr, &internal_device_context));
+
+        *context = new d3d11_rendering_device_context(internal_device_context);
+        _context = *context;
+        _context->add_ref();
+
+#ifdef _DEBUG
+        ID3D11InfoQueue* info_queue = nullptr;
+        DXCALL(_internal_device->QueryInterface(IID_PPV_ARGS(&info_queue)));
+        info_queue->GetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR);
+
+        util::safe_release(info_queue);
+#endif
+    }
+
+    void d3d11_factory::create_device_and_context(rendering_device** device, rendering_device_context** context)
+    {
+        *device = new d3d11_rendering_device(this, context);
+    }
+
+    void d3d11_factory::create_swap_chain(const swap_chain_desc& desc, rendering_device* device, rendering_device_context* context, swap_chain** swap_chain)
+    {
+        *swap_chain = new d3d11_swap_chain(device, context, desc, _internal_factory);
+    }
+
     void d3d11_rendering_device::create_buffer(const buffer_desc& desc, buffer** buffer)
     {
         *buffer =  new d3d11_buffer(this, _context, desc);
@@ -223,5 +314,51 @@ namespace orbit::graphics
         _internal_device_context->ClearDepthStencilView(view, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
     }
 
+    void d3d11_rendering_device::create_shader(const shader_desc& desc, shader** shader)
+    {
+        *shader = new d3d11_shader(desc, this, _context);
+    }
 
+    void d3d11_rendering_device::create_program(const program_desc& desc, program** program)
+    {
+        *program = new class program(desc, this, _context);
+    }
+
+    void d3d11_rendering_device_context::set_program(program* program)
+    {
+        program_desc desc = program->get_desc();
+
+        d3d11_shader* vertex = dynamic_cast<d3d11_shader*>(desc.vertex_shader);
+        d3d11_shader* pixel = dynamic_cast<d3d11_shader*>(desc.pixel_shader);
+
+        if ( vertex )
+        {
+            _internal_device_context->IASetInputLayout(vertex->_internal_layout);
+            _internal_device_context->VSSetShader(vertex->_internal_vertex_shader, nullptr, 0);
+        }
+        if ( pixel )
+            _internal_device_context->PSSetShader(pixel->_internal_pixel_shader, nullptr, 0);
+    }
+
+    void d3d11_rendering_device_context::set_vertex_buffers( unsigned int num_buffers, unsigned int* strides, buffer** buffers)
+    {
+        utl::vector<ID3D11Buffer*> v_buffers;
+        for ( int i = 0; i < num_buffers; ++i )
+            v_buffers.emplace_back(dynamic_cast<d3d11_buffer*>(buffers[i])->_buffer);
+
+        unsigned int offset = 0;
+        _internal_device_context->IASetVertexBuffers(0, v_buffers.size(), v_buffers.data(), strides, &offset);
+    }
+
+    void d3d11_rendering_device_context::set_index_buffer(buffer* buffer)
+    {
+        d3d11_buffer* ib = dynamic_cast<d3d11_buffer*>(buffer);
+        _internal_device_context->IASetIndexBuffer(ib->_buffer, DXGI_FORMAT_R32_UINT, 0);
+        _internal_device_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    }
+
+    void d3d11_rendering_device_context::draw_indexed(unsigned int no_indices)
+    {
+        _internal_device_context->DrawIndexed(no_indices, 0, 0);
+    }
 }

@@ -45,7 +45,18 @@ namespace orbit::graphics
         friend class d3d11_rendering_device_context;
     public:
         d3d11_swap_chain(rendering_device* device, rendering_device_context* context, const swap_chain_desc& desc, IDXGIFactory7* factory);
-        ~d3d11_swap_chain() override { util::safe_release(_internal_swap_chain); };
+        ~d3d11_swap_chain() override
+        {
+            util::safe_release(_frame_buffer);
+            util::safe_release(_render_target);
+            util::safe_release(_buffer);
+            util::safe_release(_internal_swap_chain);
+        };
+
+        void present() override
+        {
+            DXCALL(_internal_swap_chain->Present(_desc.vsync_enabled, 0));
+        }
 
         IDXGISwapChain* get_internal() const { return _internal_swap_chain; };
     private:

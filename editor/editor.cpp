@@ -5,9 +5,10 @@
 #include "imgui/backends/imgui_impl_dx11.h"
 
 #include "orbit/core/system.h"
-#include "orbit/graphics/d3d11/d3d11core.h"
+#include "orbit/graphics/renderer.h"
 
 #include "panel.h"
+#include "orbit/graphics/d3d11/d3d11device.h"
 
 namespace editor
 {
@@ -30,7 +31,10 @@ namespace editor
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // IF using Docking Branch
 
         ImGui_ImplGlfw_InitForOther(orbit::system::get_window(), true);
-        ImGui_ImplDX11_Init(orbit::graphics::d3d11::core::get_device(), orbit::graphics::d3d11::core::get_device_context());
+
+        orbit::graphics::d3d11_rendering_device* device = static_cast<orbit::graphics::d3d11_rendering_device*>(orbit::graphics::renderer::get_device());
+        orbit::graphics::d3d11_rendering_device_context* context = static_cast<orbit::graphics::d3d11_rendering_device_context*>(orbit::graphics::renderer::get_context());
+        ImGui_ImplDX11_Init(device->get_internal(), context->get_internal());
 
         entities.initialize();
         selected.initialize();

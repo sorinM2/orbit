@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+
 #include "util.h"
 
 namespace orbit::graphics
@@ -172,5 +174,17 @@ namespace orbit::graphics
         rational refresh_rate;
         format format;
         scaling_mode scaling;
+    };
+
+    enum class input_classification
+    {
+        per_vertex_data,
+        per_instance_data
+    };
+
+    enum class shader_type
+    {
+        vertex,
+        pixel
     };
 }

@@ -179,6 +179,16 @@ namespace orbit::graphics::d3d11
         return DXGI_MODE_SCALING_UNSPECIFIED;
     }
 
+    inline D3D11_INPUT_CLASSIFICATION convert_input_classification(input_classification type)
+    {
+        if ( type == input_classification::per_vertex_data )
+            return D3D11_INPUT_PER_VERTEX_DATA;
+        if ( type == input_classification::per_instance_data )
+            return D3D11_INPUT_PER_INSTANCE_DATA;
+        __debugbreak();
+        return D3D11_INPUT_PER_VERTEX_DATA;
+    }
+
     DXGI_FORMAT convert_format(format format);
 
     inline unsigned int get_format_size(format format)
@@ -204,7 +214,7 @@ namespace orbit::graphics::d3d11
         case format::FORMAT_R32G32B32A32_FLOAT:
         case format::FORMAT_R32G32B32A32_UINT:
         case format::FORMAT_R32G32B32A32_SINT:
-            return sizeof(int32_t) * 3;
+            return sizeof(int32_t) * 4;
 
         case format::FORMAT_R8_SINT:
         case format::FORMAT_R8_UINT:

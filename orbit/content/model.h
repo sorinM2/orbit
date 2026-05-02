@@ -1,12 +1,13 @@
 #pragma once
 #include "mesh.h"
-#include "texture.h"
 
 #include "orbit/utility/vector.h"
 #include "orbit/utility/freelist.h"
 #include <filesystem>
 
 #include <unordered_set>
+
+#include "orbit/graphics/common/shader_resource.h"
 
 struct aiScene;
 
@@ -22,16 +23,17 @@ namespace orbit::content::model
 	public:
 		explicit model(const std::filesystem::path& model_path);
 
-		void render(const components::transform& transform) const;
+		void render(const components::transform& transform);
 		void Release();
 
 		[[nodiscard]] std::string get_name() const { return _path.filename().string(); }
 
 	private:
-		texture::handle_type _texture;
+		graphics::shader_resource* _texture_shader_resource = nullptr;
 		std::filesystem::path _path;
 
 		void process_scene(const aiScene* scene);
+		void create_constant_texture_from_path(const std::filesystem::path& path);
 		utl::vector<mesh::handle_type> _meshes;
 	};
 

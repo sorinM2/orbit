@@ -4,8 +4,8 @@
 #include "orbit/ecs/ecs.h"
 #include "orbit/ecs/components.h"
 #include "orbit/content/model.h"
-#include "../orbit/graphics/common/platform.h"
-#include "orbit/graphics/d3d11/d3d11core.h"
+#include "orbit/graphics/renderer.h"
+
 
 namespace editor
 {
@@ -114,8 +114,8 @@ namespace editor
         ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiCond_FirstUseEver);
         ImGui::Begin("World View");
 
-        orbit::graphics::platform::render_target_texture to_draw;
-        to_draw = orbit::graphics::d3d11::core::get_render_target_texture();
+        orbit::graphics::renderer::render_target_texture to_draw;
+        to_draw = orbit::graphics::renderer::get_render_target_texture();
 
         ImVec2 available = ImGui::GetContentRegionAvail();
         float image_aspect = float(to_draw.width) / float(to_draw.height);
@@ -141,7 +141,7 @@ namespace editor
         ImVec2 pos = ImGui::GetCursorPos();
         ImGui::SetCursorPos(ImVec2(pos.x + offsetX, pos.y + offsetY));
 
-        ImGui::Image((ImTextureID)to_draw.texture, display_size);
+        ImGui::Image((ImTextureID)to_draw.resource, display_size);
         ImGui::End();
     }
 

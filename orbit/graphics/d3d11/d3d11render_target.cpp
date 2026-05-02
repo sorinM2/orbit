@@ -7,7 +7,7 @@ namespace orbit::graphics
 {
     d3d11_render_target::d3d11_render_target(rendering_device* device, rendering_device_context* context,
         const render_target_desc& desc, device_resource *resource)
-        : device_resource(device, context), render_target(desc)
+        : device_resource(device, context), render_target(desc, resource)
     {
         if (  desc.type == render_target_type::texture2D )
         {
@@ -49,7 +49,7 @@ namespace orbit::graphics
     }
 
     d3d11_depth_stencil::d3d11_depth_stencil(rendering_device* device, rendering_device_context* context, const depth_stencil_desc& desc, device_resource *resource)
-    : device_resource(device, context), depth_stencil(desc)
+    : device_resource(device, context), depth_stencil(desc, resource)
     {
         if ( desc.type == depth_stencil_type::texture2D )
         {
@@ -92,16 +92,19 @@ namespace orbit::graphics
         ID3D11Device* i_device = static_cast<d3d11_rendering_device*>(device)->_internal_device;
         DXCALL(factory->CreateSwapChain(i_device, &sc_desc, &_internal_swap_chain));
 
+        d3d11::name_com_object(_internal_swap_chain, "aaaaaaaa");
         ID3D11Texture2D* back_buffer = nullptr;
         DXCALL(_internal_swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**) &back_buffer));
         texture2D_desc empty_desc;
         ZeroMemory(&empty_desc, sizeof(empty_desc));
-        texture2D* sc_texture = new d3d11_texture2D(device, context, empty_desc, back_buffer);
+
+        _buffer = new d3d11_texture2D(device, context, empty_desc, back_buffer);
+        util::safe_release(back_buffer);
 
         render_target_desc rt_desc;
         ZeroMemory(&rt_desc, sizeof(rt_desc));
         rt_desc.type = render_target_type::texture2D;
-        device->create_render_target(rt_desc, sc_texture, &_render_target);
+        device->create_render_target(rt_desc, _buffer, &_render_target);
 
         framebuffer_desc fb_desc;
         ZeroMemory(&fb_desc, sizeof(fb_desc));

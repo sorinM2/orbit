@@ -8,17 +8,12 @@
 #include "texture.h"
 #include "shader_resource.h"
 #include "render_target.h"
+#include "shader.h"
 
 #include "orbit/utility/vector.h"
 
 namespace orbit::graphics
 {
-    class shader;
-    class vertex_shader;
-    class pixel_shader;
-    class swap_chain;
-    class input_layout;
-
     class rendering_device;
     class rendering_device_context;
 
@@ -39,13 +34,10 @@ namespace orbit::graphics
         virtual void create_depth_stencil_state(const depth_stencil_state_desc& desc, depth_stencil_state** depth_stencil_state) = 0;
         virtual void create_swap_chain(const swap_chain_desc& desc, swap_chain** swap_chain) = 0;
 
-        virtual void create_vertex_shader() = 0;
-        virtual void create_pixel_shader() = 0;
-        virtual void create_swap_chain() = 0;
+        virtual void create_shader(const shader_desc& desc, shader** shader) = 0;
+        virtual void create_program(const program_desc& desc, program** program) = 0;
 
-        virtual ~rendering_device() override;
-        void set_context(rendering_device_context* context) { _context = context; }
-
+        ~rendering_device() override;
 
     protected:
         void remove_resource(device_resource* resource) { _resources.erase(resource); };
@@ -55,17 +47,17 @@ namespace orbit::graphics
         rendering_device_context* _context = nullptr;
     };
 
-    class rendering_device_context : public ref_counted
+    class rendering_device_context : public virtual ref_counted
     {
     public:
 
         virtual void clear_render_target(render_target* target) = 0;
         virtual void clear_depth_stencil(depth_stencil* depth_stencil) = 0;
-        virtual void set_vertex_buffers( unsigned int num_buffers, buffer** buffers) = 0;
+
+        virtual void set_vertex_buffers( unsigned int num_buffers, unsigned int* strides, buffer** buffers) = 0;
         virtual void set_index_buffer(buffer* buffer) = 0;
-        virtual void set_input_layout(input_layout* layout) = 0;
-        virtual void set_vertex_shader(vertex_shader* shader) = 0;
-        virtual void set_pixel_shader(pixel_shader* shader) = 0;
+        virtual void draw_indexed(unsigned int no_indices) = 0;
+
         virtual void set_rasterizer(rasterizer* rasterizer) = 0;
         virtual void set_viewports(viewport* viewports, unsigned int count) = 0;
         virtual void set_scissors(rect* rects, unsigned int count) = 0;
@@ -76,6 +68,8 @@ namespace orbit::graphics
 
         virtual void set_frame_buffer(framebuffer* framebuffer) = 0;
         virtual void set_depth_stencil_state(depth_stencil_state* dss) = 0;
+
+        virtual void set_program(program* program) = 0;
         ~rendering_device_context() override {}
 
         void get_viewports(int* count, viewport* viewports) const;
@@ -83,8 +77,13 @@ namespace orbit::graphics
     protected:
         utl::vector<viewport> _viewports;
         utl::vector<rect> _scissors;
+    };
 
-    protected:
-
+    class factory : public virtual ref_counted
+    {
+    public:
+        ~factory() override = default;
+        virtual void create_device_and_context(rendering_device** device, rendering_device_context** context) = 0;
+        virtual void create_swap_chain(const swap_chain_desc& desc, rendering_device* device, rendering_device_context* context, swap_chain** sawp_chain) = 0;
     };
 }

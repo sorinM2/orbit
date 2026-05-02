@@ -4,9 +4,11 @@
 #include "orbit/utility/freelist.h"
 #include <functional>
 
+#include "orbit/graphics/common/buffer.h"
+
 namespace orbit::content::mesh
 {
-	struct mesh
+	struct mesh_data
 	{
 		struct vertex
 		{
@@ -19,22 +21,24 @@ namespace orbit::content::mesh
 		utl::vector<unsigned int> _indices;
 	};
 
-	DEFINE_LIST_TYPE(mesh)
-
-	handle_type add_mesh(const mesh& mesh);
-	mesh& get_mesh(const handle_type& handle);
-	void remove_mesh(const handle_type& handle);
-
-	void render(const handle_type& handle);
-
-	struct platform_descriptor
+	class mesh
 	{
-		std::function<void(const handle_type&)> add;
-		std::function<void(const handle_type&)> render;
-		std::function<void(const handle_type&)> release;
+	public:
+		explicit mesh(const mesh_data& data);
+		~mesh(){ util::safe_release(_vertex_buffer); util::safe_release(_index_buffer); }
+		void render();
+	private:
+		unsigned int _vertices_count;
+		unsigned int _indices_count;
 
-		std::function<void(const glm::mat4&)> bind_world;
+		graphics::buffer* _vertex_buffer = nullptr;
+		graphics::buffer* _index_buffer = nullptr;
 	};
 
-	void set_platform(const platform_descriptor& platform_descriptor);
+	DEFINE_LIST_TYPE(mesh)
+
+	handle_type add_mesh(const mesh_data& mesh_data);
+	mesh& get_mesh(const handle_type& handle);
+	void remove_mesh(const handle_type& handle);
+	void render(const handle_type& handle);
 }

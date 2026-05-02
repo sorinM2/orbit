@@ -6,7 +6,6 @@
 #include "input.h"
 #include "orbit/logger/logger.h"
 
-#include "../graphics/common/platform.h"
 
 namespace orbit::system
 {
@@ -44,8 +43,8 @@ namespace orbit::system
 		_width = width;
 		_height = height;
 
-		auto platform = graphics::platform::get_platform();
-		platform.resize();
+		// auto platform = graphics::platform::get_platform();
+		// platform.resize();
 	}
 
 	int get_window_width()

@@ -5,8 +5,10 @@ namespace orbit::graphics
 {
     rendering_device::~rendering_device()
     {
-        for ( auto* resource : _resources )
-            resource -> Release();
+        for ( auto& resource : _resources )
+            while (resource )
+                resource -> Release();
+        util::safe_release(_context);
     }
 
     void rendering_device_context::get_viewports(int* count, viewport* viewports) const

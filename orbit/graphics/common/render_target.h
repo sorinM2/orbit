@@ -45,11 +45,13 @@ namespace orbit::graphics
     class depth_stencil : public virtual device_resource
     {
     public:
-        explicit depth_stencil(const depth_stencil_desc& desc) : device_resource(nullptr, nullptr), _desc(desc) {}
-        ~depth_stencil() override {}
+        explicit depth_stencil(const depth_stencil_desc& desc, device_resource* resource, rendering_device* device = nullptr, rendering_device_context* context = nullptr)
+        : device_resource(device, context), _resource(resource), _desc(desc) { _resource->add_ref(); }
+        ~depth_stencil() override { util::safe_release(_resource); }
 
         depth_stencil_desc get_desc() const { return _desc; }
     protected:
+        device_resource* _resource = nullptr;
         depth_stencil_desc _desc;
     };
 
@@ -66,12 +68,13 @@ namespace orbit::graphics
     class render_target : public virtual device_resource
     {
     public:
-        explicit render_target(const render_target_desc& desc, rendering_device* device = nullptr, rendering_device_context* context = nullptr )
-        : device_resource(nullptr, nullptr), _desc(desc) {}
-        ~render_target() override {}
+        explicit render_target(const render_target_desc& desc, device_resource* resource, rendering_device* device = nullptr, rendering_device_context* context = nullptr )
+        : device_resource(nullptr, nullptr), _resource(resource), _desc(desc) { resource->add_ref(); }
+        ~render_target() override { util::safe_release(_resource);}
 
         render_target_desc get_desc() const { return _desc; }
     protected:
+        device_resource* _resource = nullptr;
         render_target_desc _desc;
     };
 
@@ -88,16 +91,34 @@ namespace orbit::graphics
         {
             _targets = new render_target*[desc.count];
             for ( int i = 0; i < desc.count; i++ )
+            {
                 _targets[i] = targets[i];
+                if ( _targets[i] )_targets[i]->add_ref();
+            }
         }
 
         render_target** get_targets() const { return _targets; }
         framebuffer_desc get_desc() const { return _desc; }
-        void set_depth_stencil(depth_stencil* depth_stencil) { _depth_stencil = depth_stencil; }
+        void set_depth_stencil(depth_stencil* depth_stencil)
+        {
+            util::safe_release(_depth_stencil);
+            _depth_stencil = depth_stencil;
+            if ( _depth_stencil ) _depth_stencil->add_ref();
+        }
         depth_stencil* get_depth_stencil() const { return _depth_stencil; }
 
     private:
-        ~framebuffer() override { if (_targets) delete[] _targets; }
+        ~framebuffer() override
+        {
+            if (!_targets)
+                return;
+
+            for ( int i = 0; i < _desc.count; i++ )
+                util::safe_release(_targets[i]);
+
+            util::safe_release(_depth_stencil);
+            delete[] _targets;
+        }
 
         render_target** _targets = nullptr;
         framebuffer_desc _desc{};
@@ -118,9 +139,11 @@ namespace orbit::graphics
     {
     public:
         swap_chain(const swap_chain_desc& desc, rendering_device* device = nullptr, rendering_device_context* context = nullptr)
-            : device_resource(nullptr, nullptr), _desc(desc) {}
+            : device_resource(device, context), _desc(desc) {}
 
-        ~swap_chain() override { util::safe_release(_frame_buffer); util::safe_release(_render_target);};
+        ~swap_chain() override {};
+        virtual void present() = 0;
+
         framebuffer* get_framebuffer() const { return _frame_buffer; }
         swap_chain_desc get_desc() const { return _desc; }
 
@@ -128,6 +151,6 @@ namespace orbit::graphics
         swap_chain_desc _desc{};
         framebuffer* _frame_buffer = nullptr;
         render_target* _render_target = nullptr;
-
+        texture2D* _buffer = nullptr;
     };
 }

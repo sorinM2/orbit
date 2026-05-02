@@ -1,5 +1,4 @@
 #include "model.h"
-#include "model.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
@@ -7,9 +6,13 @@
 #include <fstream>
 #include <queue>
 
-#include "../graphics/common/platform.h"
-
 #include "orbit/ecs/components.h"
+
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#include "thirdparty/sdbi.h"
+
+#include "orbit/graphics/renderer.h"
 
 namespace orbit::content::model
 {
@@ -45,9 +48,40 @@ namespace orbit::content::model
 	{
 		for ( auto mesh_handle : _meshes )
 			mesh::remove_mesh(mesh_handle);
-		texture::remove_texture(_texture);
+		util::safe_release(_texture_shader_resource);
 	}
 
+	void model::create_constant_texture_from_path(const std::filesystem::path& path)
+	{
+		graphics::texture2D* new_tex = nullptr;
+		graphics::rendering_device* device = graphics::renderer::get_device();
+
+		int width, height, channels;
+		unsigned char* data = stbi_load(path.string().c_str(), &width, &height, &channels, 4);
+
+		graphics::texture2D_desc desc;
+		desc.width = width;
+		desc.height = height;
+		desc.bind_flags = graphics::bind_flags::bind_flag_shader_resource;// | graphics::bind_flags::bind_flag_render_target;
+		desc.cpu_access_flags = 0;
+		desc.format = graphics::format::FORMAT_R8G8B8A8_UNORM;
+		desc.initial_data = data;
+		desc.mips = 1;
+		desc.sample_desc.count = 1;
+		desc.sample_desc.quality = 0;
+		desc.usage = graphics::resource_usage::resource_default_usage;
+
+		device->create_texture2D(desc, &new_tex);
+
+		graphics::shader_resource_desc sr_desc;
+		sr_desc.format =  graphics::format::FORMAT_R8G8B8A8_UNORM;
+		sr_desc.type = graphics::shader_resource_type::texture2D;
+
+		device->create_shader_resource(sr_desc, new_tex, &_texture_shader_resource);
+
+		util::safe_release(new_tex);
+		stbi_image_free(data);
+	}
 
 	void model::process_scene(const aiScene* scene)
 	{
@@ -59,7 +93,7 @@ namespace orbit::content::model
 
 		for ( int current_mesh = 0; current_mesh < no_meshes; ++current_mesh )
 		{
-			mesh::mesh mesh;
+			mesh::mesh_data mesh;
 
 			aiMesh* ai_mesh = scene->mMeshes[current_mesh];
 
@@ -70,7 +104,7 @@ namespace orbit::content::model
 
 			for ( int i = 0; i < no_vertices; ++i )
 			{
-				mesh::mesh::vertex vertex{};
+				mesh::mesh_data::vertex vertex{};
 				vertex.position = glm::vec3(ai_mesh->mVertices[i].x * 0.1, ai_mesh->mVertices[i].y * 0.1, ai_mesh->mVertices[i].z * 0.1);
 				vertex.normal = glm::vec3(ai_mesh->mNormals[i].x, ai_mesh->mNormals[i].y, ai_mesh->mNormals[i].z);
 
@@ -120,9 +154,9 @@ namespace orbit::content::model
 
 					file.write(reinterpret_cast<const char*>(ai_texture->pcData), ai_texture->mWidth);
 					file.close();
-					_texture = texture::add_texture(dest_path);
+					create_constant_texture_from_path(dest_path);
 				}
-				else _texture = texture::add_texture(path);
+				else create_constant_texture_from_path(path);
 			}
 		}
 
@@ -156,7 +190,6 @@ namespace orbit::content::model
 		model.Release();
 
 		_models.erase(model_handle);
-
 		_handles.erase(model_handle);
 	}
 
@@ -173,12 +206,11 @@ namespace orbit::content::model
 		return _models.get(handle);
 	}
 
-	void model::render(const components::transform& transform) const
+	void model::render(const components::transform& transform)
 	{
-		if (_texture.is_valid())
-			texture::bind_texture(_texture);
+		graphics::rendering_device_context* context = graphics::renderer::get_context();
+		context->ps_set_shader_resources(&_texture_shader_resource, 1, 0);
 
-		auto platform_desc = graphics::platform::get_platform();
 		glm::mat4 world_matrix = glm::mat4(1.f);
 
 		world_matrix = glm::translate(world_matrix, transform.position);
@@ -191,7 +223,7 @@ namespace orbit::content::model
 
 		world_matrix = glm::transpose(world_matrix);
 
-		platform_desc.mesh.bind_world(world_matrix);
+		graphics::renderer::bind_world(world_matrix);
 
 		for ( auto& mesh_handle : _meshes )
 			mesh::render(mesh_handle);

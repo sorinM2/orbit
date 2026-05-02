@@ -11,8 +11,8 @@ namespace orbit::graphics
 
     public:
         d3d11_rasterizer(rendering_device* device, rendering_device_context* context, const rasterizer_desc& desc);
-        ~d3d11_rasterizer() override { util::safe_release(_internal_rasterizer_state); }
     private:
+        ~d3d11_rasterizer() override { util::safe_release(_internal_rasterizer_state); }
         ID3D11RasterizerState* _internal_rasterizer_state;
     };
 }

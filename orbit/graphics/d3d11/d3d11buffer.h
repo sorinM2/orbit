@@ -15,9 +15,9 @@ namespace orbit::graphics
         void unmap() override;
         void update_buffer(unsigned int offset, unsigned int size, void* data) override;
 
-        ~d3d11_buffer() override { util::safe_release(_buffer); }
     private:
         d3d11_buffer(rendering_device* device, rendering_device_context* context, const buffer_desc& desc);
+        ~d3d11_buffer() override { util::safe_release(_buffer); }
 
         ID3D11Buffer* _buffer = nullptr;
     };
