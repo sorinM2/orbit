@@ -4,7 +4,7 @@ namespace orbit::graphics
 {
     device_resource::~device_resource()
     {
-        _owner->remove_resource(this);
+        if ( _owner ) _owner->remove_resource(this);
     }
 
 }

@@ -1,7 +1,6 @@
 #include "d3d11render_target.h"
 #include "d3d11device.h"
 #include "util.h"
-#include "orbit/core/system.h"
 
 namespace orbit::graphics
 {
@@ -82,7 +81,7 @@ namespace orbit::graphics
 
         sc_desc.BufferCount = desc.buffer_count;
         sc_desc.BufferUsage = d3d11::convert_swap_chain_flags(desc.buffer_usage);
-        sc_desc.OutputWindow = system::get_main_hwnd(); //TODO make a window class
+        sc_desc.OutputWindow = desc.window->get_main_hwnd();
         sc_desc.Windowed = desc.windowed;
         sc_desc.SampleDesc.Count = desc.sample_desc.count;
         sc_desc.SampleDesc.Quality = desc.sample_desc.quality;
@@ -93,12 +92,23 @@ namespace orbit::graphics
         DXCALL(factory->CreateSwapChain(i_device, &sc_desc, &_internal_swap_chain));
 
         d3d11::name_com_object(_internal_swap_chain, "aaaaaaaa");
+
+        initialize_subresources();
+    }
+
+    void d3d11_swap_chain::initialize_subresources()
+    {
+        util::safe_release(_buffer);
+        util::safe_release(_render_target);
+        util::safe_release(_frame_buffer);
+
+        rendering_device* device = get_device();
+        d3d11_rendering_device* d3d11_device = static_cast<d3d11_rendering_device*>(device);
         ID3D11Texture2D* back_buffer = nullptr;
         DXCALL(_internal_swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**) &back_buffer));
         texture2D_desc empty_desc;
         ZeroMemory(&empty_desc, sizeof(empty_desc));
-
-        _buffer = new d3d11_texture2D(device, context, empty_desc, back_buffer);
+        d3d11_device->create_texture2D(empty_desc, &_buffer, back_buffer);
         util::safe_release(back_buffer);
 
         render_target_desc rt_desc;
@@ -113,5 +123,16 @@ namespace orbit::graphics
         device->create_framebuffer(fb_desc, &_render_target, &_frame_buffer);
 
         _frame_buffer->set_depth_stencil(nullptr);
+    }
+
+
+    void d3d11_swap_chain::resize_swap_chain()
+    {
+        util::safe_release(_buffer);
+        util::safe_release(_render_target);
+        util::safe_release(_frame_buffer);
+
+        DXCALL(_internal_swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0));
+        initialize_subresources();
     }
 }

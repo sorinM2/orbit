@@ -14,6 +14,21 @@ namespace orbit::graphics
         ~device_resource() override;
         device_resource(rendering_device* owner, rendering_device_context* context) : _owner(owner), _context(context) {}
 
+        device_resource(const device_resource& other)
+        {
+            _owner = other._owner;
+            _context = other._context;
+            ref_counted::add_ref();
+        }
+
+        device_resource(device_resource&& other)
+        {
+            _owner = other._owner;
+            _context = other._context;
+            other._owner = nullptr;
+            other._context = nullptr;
+        }
+
         rendering_device* get_device() const { return _owner; }
         rendering_device_context* get_context() const { return _context; }
     private:
@@ -35,6 +50,8 @@ namespace orbit::graphics
 
     enum class format
     {
+        FORMAT_UNKNOWN,
+
         FORMAT_R32G32B32A32_FLOAT,
         FORMAT_R32G32B32A32_UINT,
         FORMAT_R32G32B32A32_SINT,

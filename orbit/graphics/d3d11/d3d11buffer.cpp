@@ -10,10 +10,17 @@ namespace orbit::graphics
         D3D11_BUFFER_DESC buffer_desc;
         ZeroMemory(&buffer_desc, sizeof(buffer_desc));
 
+        _desc.width = desc.width + (16 - desc.width % 16);
         buffer_desc.Usage = d3d11::convert_resource_usage_flag(_desc.usage);
         buffer_desc.BindFlags = d3d11::convert_bind_flags(_desc.bind_flags);
         buffer_desc.CPUAccessFlags = d3d11::convert_cpu_access_flags(_desc.cpu_access_flags);
         buffer_desc.ByteWidth = _desc.width;
+
+        if ( desc.structured )
+        {
+            buffer_desc.StructureByteStride = _desc.structure_width;
+            buffer_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+        }
 
         D3D11_SUBRESOURCE_DATA init_data;
         ZeroMemory(&init_data, sizeof(init_data));

@@ -17,6 +17,9 @@ namespace orbit::graphics
         resource_usage usage;
         unsigned int cpu_access_flags;
         unsigned int bind_flags;
+
+        bool structured = false;
+        unsigned int structure_width;
     };
 
     class buffer : public virtual device_resource

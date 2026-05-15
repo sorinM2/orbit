@@ -7,5 +7,6 @@ namespace orbit::application
 	void update();
 	void render();
 
+	bool should_close();
 	void shutdown();
 }

@@ -41,6 +41,8 @@ namespace orbit::graphics::renderer
     void begin_editor();
     void end_frame();
 
+    bool should_close();
     void shutdown();
 
+    GLFWwindow* get_window();
 }

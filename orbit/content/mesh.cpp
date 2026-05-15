@@ -11,8 +11,16 @@ namespace orbit::content::mesh
 		std::unordered_set<handle_type, hash_type> _handles;
 	}
 
+	void shutdown()
+	{
+		for ( auto handle : _handles )
+			_meshes.erase(handle);
+		_handles.clear();
+	}
 	mesh::mesh(const mesh_data& data)
 	{
+		_material = data._material;
+
 		_vertices_count = data._vertices.size();
 		_indices_count = data._indices.size();
 

@@ -13,6 +13,7 @@
 #include "thirdparty/sdbi.h"
 
 #include "orbit/graphics/renderer.h"
+#include <unordered_map>
 
 namespace orbit::content::model
 {
@@ -20,6 +21,15 @@ namespace orbit::content::model
 	{
 		list_type _models;
 		std::unordered_set<handle_type, hash_type> _handles;
+		std::unordered_map<mesh::handle_type, material::handle_type, mesh::hash_type> mesh_to_material;
+	}
+
+	void shutdown()
+	{
+		mesh::shutdown();
+		for ( auto model : _handles )
+			_models.erase(model);
+		_handles.clear();
 	}
 
 	const list_type& get_models_view()
@@ -44,14 +54,17 @@ namespace orbit::content::model
 		process_scene(scene);
 	}
 
-	void model::Release()
+	model::~model()
 	{
 		for ( auto mesh_handle : _meshes )
 			mesh::remove_mesh(mesh_handle);
-		util::safe_release(_texture_shader_resource);
+		//util::safe_release(_texture_shader_resource);
+
+		for ( auto m_handle : _materials )
+			material::remove_material(m_handle);
 	}
 
-	void model::create_constant_texture_from_path(const std::filesystem::path& path)
+	void model::create_constant_texture_from_path(const std::filesystem::path& path, graphics::shader_resource** sr)
 	{
 		graphics::texture2D* new_tex = nullptr;
 		graphics::rendering_device* device = graphics::renderer::get_device();
@@ -62,11 +75,11 @@ namespace orbit::content::model
 		graphics::texture2D_desc desc;
 		desc.width = width;
 		desc.height = height;
-		desc.bind_flags = graphics::bind_flags::bind_flag_shader_resource;// | graphics::bind_flags::bind_flag_render_target;
+		desc.bind_flags = graphics::bind_flags::bind_flag_shader_resource | graphics::bind_flags::bind_flag_render_target;
 		desc.cpu_access_flags = 0;
 		desc.format = graphics::format::FORMAT_R8G8B8A8_UNORM;
 		desc.initial_data = data;
-		desc.mips = 1;
+		desc.mips = 0;
 		desc.sample_desc.count = 1;
 		desc.sample_desc.quality = 0;
 		desc.usage = graphics::resource_usage::resource_default_usage;
@@ -77,7 +90,7 @@ namespace orbit::content::model
 		sr_desc.format =  graphics::format::FORMAT_R8G8B8A8_UNORM;
 		sr_desc.type = graphics::shader_resource_type::texture2D;
 
-		device->create_shader_resource(sr_desc, new_tex, &_texture_shader_resource);
+		device->create_shader_resource(sr_desc, new_tex, sr);
 
 		util::safe_release(new_tex);
 		stbi_image_free(data);
@@ -87,6 +100,53 @@ namespace orbit::content::model
 	{
 		unsigned int no_meshes = scene->mNumMeshes;
 		unsigned int no_materials = scene->mNumMaterials;
+
+		for ( unsigned int i = 0; i < no_materials; ++i )
+		{
+			aiMaterial* ai_material = scene->mMaterials[i];
+
+			material::material_desc material_desc;
+			unsigned int no_tex = material_desc.material_buffer.no_diffuse_textures = ai_material->GetTextureCount(aiTextureType_DIFFUSE);
+			for ( unsigned int j = 0; j < no_tex; ++j )
+			{
+				aiString ai_path;
+				ai_material->GetTexture(aiTextureType_DIFFUSE, j, &ai_path );
+				std::string path_s(ai_path.C_Str());
+				std::filesystem::path path(path_s);
+				unsigned int texture_index = std::stoi(path_s.substr(1));
+
+				graphics::shader_resource* sr = nullptr;
+				if ( path_s[0] == '*' )
+				{
+					aiTexture* ai_texture = scene->mTextures[texture_index];
+
+					std::filesystem::path dest_path = _path.parent_path() / "_tex";
+					dest_path.replace_extension(ai_texture->achFormatHint);
+					std::ofstream file(dest_path, std::ios::binary);
+
+					assert(ai_texture->mHeight == 0 );
+
+					file.write(reinterpret_cast<const char*>(ai_texture->pcData), ai_texture->mWidth);
+					file.close();
+					create_constant_texture_from_path(dest_path, &sr);
+				}
+				else create_constant_texture_from_path(path, &sr);
+
+				float blend;
+				ai_material->Get(AI_MATKEY_TEXBLEND(aiTextureType_DIFFUSE, j), blend);
+				material::texture_buffer tbuffer;
+				tbuffer.blend = blend;
+				material_desc.diffuse_textures_data.emplace_back(tbuffer);
+				material_desc.diffuse_textures_srs.emplace_back(sr);
+			}
+
+			material_desc.material_buffer.opacity = 1.f;
+			material_desc.material_buffer.no_diffuse_textures = no_tex;
+			material_desc.no_textures = no_tex;
+
+			auto handle = material::add_material(material_desc);
+			_materials.emplace_back(handle);
+		}
 
 		utl::vector<mesh::handle_type> unique_meshes;
 		unique_meshes.reserve(no_meshes);
@@ -121,44 +181,15 @@ namespace orbit::content::model
 					mesh._indices.emplace_back(face.mIndices[j]);
 			}
 
+			unsigned int mat_index = ai_mesh->mMaterialIndex;
+
 			mesh::handle_type mesh_handle = mesh::add_mesh(mesh);
+			mesh_to_material[mesh_handle] = _materials[mat_index];
 			unique_meshes.emplace_back(mesh_handle);
 		}
 
 		std::queue<aiNode*> q;
 		q.emplace(scene->mRootNode);
-
-		if ( no_materials )
-		{
-			aiMaterial* ai_material = scene->mMaterials[0];
-			aiString ai_path;
-			ai_material->GetTexture(aiTextureType_DIFFUSE, 0, &ai_path );
-			std::string path_s(ai_path.C_Str());
-			std::filesystem::path path(path_s);
-			unsigned int texture_index = std::stoi(path_s.substr(1));
-
-
-			unsigned int no_textures = ai_material->GetTextureCount(aiTextureType_DIFFUSE);
-
-			if ( no_textures )
-			{
-				if ( path_s[0] == '*' )
-				{
-					aiTexture* ai_texture = scene->mTextures[texture_index];
-
-					std::filesystem::path dest_path = _path.parent_path() / "_tex";
-					dest_path.replace_extension(ai_texture->achFormatHint);
-					std::ofstream file(dest_path, std::ios::binary);
-
-					assert(ai_texture->mHeight == 0 );
-
-					file.write(reinterpret_cast<const char*>(ai_texture->pcData), ai_texture->mWidth);
-					file.close();
-					create_constant_texture_from_path(dest_path);
-				}
-				else create_constant_texture_from_path(path);
-			}
-		}
 
 		while (!q.empty())
 		{
@@ -187,7 +218,6 @@ namespace orbit::content::model
 			return;
 
 		model& model = _models.get(model_handle);
-		model.Release();
 
 		_models.erase(model_handle);
 		_handles.erase(model_handle);
@@ -209,7 +239,7 @@ namespace orbit::content::model
 	void model::render(const components::transform& transform)
 	{
 		graphics::rendering_device_context* context = graphics::renderer::get_context();
-		context->ps_set_shader_resources(&_texture_shader_resource, 1, 0);
+		//context->ps_set_shader_resources(&_texture_shader_resource, 1, 0);
 
 		glm::mat4 world_matrix = glm::mat4(1.f);
 
@@ -226,6 +256,9 @@ namespace orbit::content::model
 		graphics::renderer::bind_world(world_matrix);
 
 		for ( auto& mesh_handle : _meshes )
+		{
+			material::bind_material(mesh_to_material[mesh_handle]);
 			mesh::render(mesh_handle);
+		}
 	}
 }

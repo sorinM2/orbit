@@ -4,7 +4,6 @@
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_dx11.h"
 
-#include "orbit/core/system.h"
 #include "orbit/graphics/renderer.h"
 
 #include "panel.h"
@@ -30,7 +29,7 @@ namespace editor
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // IF using Docking Branch
 
-        ImGui_ImplGlfw_InitForOther(orbit::system::get_window(), true);
+        ImGui_ImplGlfw_InitForOther(orbit::graphics::renderer::get_window(), true);
 
         orbit::graphics::d3d11_rendering_device* device = static_cast<orbit::graphics::d3d11_rendering_device*>(orbit::graphics::renderer::get_device());
         orbit::graphics::d3d11_rendering_device_context* context = static_cast<orbit::graphics::d3d11_rendering_device_context*>(orbit::graphics::renderer::get_context());

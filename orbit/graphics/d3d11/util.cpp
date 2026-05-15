@@ -39,6 +39,8 @@ namespace orbit::graphics::d3d11
         _converisons[format::FORMAT_R32G32B32A32_SINT] = DXGI_FORMAT_R32G32B32A32_SINT;
 
         _converisons[format::FORMAT_D24_UNORM_S8_UINT] = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+        _converisons[format::FORMAT_UNKNOWN] = DXGI_FORMAT_UNKNOWN;
     }
 
     DXGI_FORMAT convert_format(format format)

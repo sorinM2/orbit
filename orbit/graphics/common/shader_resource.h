@@ -7,12 +7,28 @@ namespace orbit::graphics
     enum class shader_resource_type
     {
         texture2D,
+        buffer
     };
 
     struct shader_resource_desc
     {
         shader_resource_type type;
         format format;
+
+        struct shader_resource_buffer
+        {
+            union
+            {
+                unsigned int first_element;
+                unsigned int element_offset;
+            };
+            union
+            {
+                unsigned int num_elements;
+                unsigned int element_width;
+
+            };
+        } buffer;
     };
 
     class shader_resource : public virtual device_resource

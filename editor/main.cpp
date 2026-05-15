@@ -1,8 +1,9 @@
-#include "orbit/core/system.h"
+#include "orbit/core/application.h"
 #include "orbit/core/platform/platform_common.h"
 #include <thread>
 #include <chrono>
 #include "editor.h"
+#include <glfw/glfw3.h>
 
 #include "orbit/core/application.h"
 
@@ -17,13 +18,12 @@ namespace
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
-    if (!orbit::system::initialize(hInst, cmdshow)) return false;
+    if (!orbit::application::initialize()) return false;
     editor::initialize();
 
-    while ( !orbit::system::should_close() )
+    while ( !orbit::application::should_close() )
     {
         double frame_start = glfwGetTime();
-        orbit::system::run();
         orbit::application::update();
         editor::update();
         orbit::application::render();
@@ -42,7 +42,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdsh
     }
 
     editor::shutdown();
-    orbit::system::shutdown();
+    orbit::application::shutdown();
 
     return 0;
 }

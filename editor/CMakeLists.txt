@@ -3,6 +3,7 @@ add_executable( editor WIN32
         main.cpp
         editor.cpp
 
+        popup.cpp
         panel.cpp
 )
 

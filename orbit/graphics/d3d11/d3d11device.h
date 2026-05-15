@@ -38,6 +38,7 @@ namespace orbit::graphics
         void create_sampler(const sampler_desc& desc, sampler** sampler) override;
         void create_rasterizer(const rasterizer_desc& desc, rasterizer** rasterizer) override;
         void create_texture2D(const texture2D_desc& desc, texture2D** texture) override;
+        void create_texture2D(const texture2D_desc& desc, texture2D** texture, ID3D11Texture2D* d3d11_texture);
         void create_shader_resource(const shader_resource_desc& desc, device_resource* resource, shader_resource** shader_resource) override;
         void create_render_target(const render_target_desc& desc, device_resource* resource, render_target** render_target) override;
         void create_depth_stencil(const depth_stencil_desc& desc, device_resource* resource, depth_stencil** depth_stencil) override;
@@ -94,6 +95,7 @@ namespace orbit::graphics
 
         void set_samplers(sampler** samplers, unsigned int count, unsigned int start_slot = 0) override;
         void vs_set_constant_buffers(buffer** buffer, unsigned int count, unsigned int slot) override;
+        void ps_set_constant_buffers(buffer** buffer, unsigned int count, unsigned int slot) override;
         void ps_set_shader_resources(shader_resource** srs, unsigned int count, unsigned int slot) override;
         void set_depth_stencil_state(depth_stencil_state* dss) override;
 

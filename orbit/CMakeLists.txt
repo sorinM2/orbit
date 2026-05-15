@@ -1,17 +1,18 @@
 ﻿
 add_library (orbit
-				core/system.cpp
 				core/application.cpp
 				core/input.cpp
 
 				content/mesh.cpp
 				content/model.cpp
+				content/material.cpp
 
 		graphics/renderer.cpp
 
         graphics/common/camera.cpp
         graphics/common/device.cpp
         graphics/common/common.cpp
+        graphics/common/window.cpp
 
 
 				graphics/d3d11/d3d11buffer.cpp

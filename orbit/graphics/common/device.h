@@ -40,7 +40,7 @@ namespace orbit::graphics
         ~rendering_device() override;
 
     protected:
-        void remove_resource(device_resource* resource) { _resources.erase(resource); };
+        void remove_resource(device_resource* resource) { if ( resource ) _resources.erase(resource); };
         void add_resource(device_resource* resource) { _resources.insert(resource); };
         std::unordered_set<device_resource*> _resources;
 
@@ -64,6 +64,7 @@ namespace orbit::graphics
         virtual void set_samplers(sampler** samplers, unsigned int count, unsigned int start_slot = 0) = 0;
 
         virtual void vs_set_constant_buffers(buffer** buffer, unsigned int count, unsigned int slot) = 0;
+        virtual void ps_set_constant_buffers(buffer** buffer, unsigned int count, unsigned int slot) = 0;
         virtual void ps_set_shader_resources(shader_resource** srs, unsigned int count, unsigned int slot) = 0;
 
         virtual void set_frame_buffer(framebuffer* framebuffer) = 0;

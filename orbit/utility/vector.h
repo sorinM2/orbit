@@ -156,38 +156,49 @@ namespace utl
 			return _data + _size;
 		}
 
+		T* first() const
+		{
+			return _data;
+		}
+
+		T* last() const
+		{
+			return _data + _size - 1;
+		}
+
 		constexpr void insert(T* position, const T& value)
 		{
 			static_assert(disable_tombstoning);
 			emplace(position, value);
 		}
 
-		constexpr void insert(T* position, T* range_start, T* range_end)
+		constexpr void insert(unsigned int slot, T* range_start, T* range_end)
 		{
 			static_assert(disable_tombstoning);
-			assert(range_end > range_start);
-			assert(position >= internal_begin() && position <= internal_end());
+			assert(range_end >= range_start);
+			assert(slot <= size());
 
 			unsigned int spaces = range_end - range_start;
 
-			unsigned int offset = position - internal_begin();
-
 			controlled_reserve(_size + spaces);
 
-			position = internal_begin() + offset;
-
-			for (T* it = end() + spaces - 1; it >= position + spaces; --it)
+			for (T* it = end() + spaces - 1; it >= begin() + slot + spaces; --it)
 			{
 				new (it) T(std::move(*(it - spaces)));
 				it = std::launder(it);
 				(it - spaces)->~T();
 			}
 
-			std::copy(range_start, range_end, position);
+			std::copy(range_start, range_end, internal_begin() + slot);
 
 			_size += spaces;
 		}
 
+		constexpr void append(const vector& other)
+		{
+			if ( other.size() )
+				insert(size(), other.first(), other.end());
+		}
 
 		template<typename... Targs>
 		constexpr void emplace(T* position, Targs&&... args)

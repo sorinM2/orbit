@@ -1,6 +1,5 @@
 #include "camera.h"
 #include "glm/gtc/matrix_transform.hpp"
-#include "orbit/core/system.h"
 #include "orbit/core/input.h"
 
 namespace orbit::graphics::camera
@@ -23,7 +22,7 @@ namespace orbit::graphics::camera
 		_buffer.view = glm::lookAt(_position, _position + _forward, _up);
 		_buffer.view = glm::transpose(_buffer.view);
 
-		_buffer.projection = glm::perspective(glm::radians(45.f), float(system::get_window_width()) / float(system::get_window_height()), 0.1f, 100.f);
+		_buffer.projection = glm::perspective(glm::radians(45.f), float(1920) / float(1080), 0.1f, 100.f);
 		_buffer.projection = glm::transpose(_buffer.projection);
 
 		_last_position = input::get_cursor_position();

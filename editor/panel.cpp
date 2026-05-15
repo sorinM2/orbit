@@ -6,6 +6,8 @@
 #include "orbit/content/model.h"
 #include "orbit/graphics/renderer.h"
 
+#include <algorithm>
+#include "popup.h"
 
 namespace editor
 {
@@ -93,19 +95,42 @@ namespace editor
 
     ::orbit::content::model::handle_type model_panel::selected_model;
 
+    model_panel::~model_panel() = default;
+    model_panel::model_panel() = default;
+
+    void model_panel::initialize()
+    {
+        _popup = std::make_unique<model_popup>("add model");
+    }
+
     void model_panel::update()
     {
         const auto& handles = orbit::content::model::get_handles();
 
+        ImVec2 available = ImGui::GetContentRegionAvail();
+        ImVec2 size_list = ImVec2(available.x * 0.8, available.y);
+
         ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiCond_FirstUseEver);
         ImGui::Begin("Models");
 
+        ImGui::BeginChild("allmodels", size_list);
         for ( auto handle : handles )
         {
             orbit::content::model::model& _model = orbit::content::model::get_model(handle);
             if ( ImGui::Selectable(_model.get_name().c_str(), selected_model == handle) )
                 selected_model = handle;
         }
+
+        ImGui::EndChild();
+
+        ImGui::SameLine();
+        ImGui::BeginChild("add model");
+
+        if ( ImGui::Button("Add model") )
+            _popup->initialize();
+
+        _popup->update();
+        ImGui::EndChild();
         ImGui::End();
     }
 
@@ -145,6 +170,31 @@ namespace editor
         ImGui::End();
     }
 
+    std::filesystem::path file_panel::update()
+    {
+        std::filesystem::path result;
+        ImGui::Text("%s", _path.string().c_str());
 
+        if ( ImGui::Button("back") )
+            _path = _path.parent_path();
+
+            for (const auto& dir_entry : std::filesystem::directory_iterator(_path) )
+            {
+                std::u8string label_s = dir_entry.path().filename().u8string();
+                const char* label = reinterpret_cast<const char*>(label_s.c_str());
+
+               if ( ImGui::Selectable( label, _selected_path == dir_entry.path()) )
+                   _selected_path = dir_entry.path();
+
+                if (  ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0) )
+                {
+                    if ( !std::filesystem::is_directory(dir_entry.path()) )
+                        result = dir_entry.path();
+                    else _path = dir_entry.path();
+                }
+            }
+
+        return result;
+    }
 
 }

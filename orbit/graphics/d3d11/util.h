@@ -195,6 +195,9 @@ namespace orbit::graphics::d3d11
     {
         switch (format)
         {
+        case format::FORMAT_UNKNOWN:
+            return 0;
+
         case format::FORMAT_R32_FLOAT:
         case format::FORMAT_R32_UINT:
         case format::FORMAT_R32_SINT:

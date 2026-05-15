@@ -102,6 +102,7 @@ namespace orbit::graphics
         *buffer =  new d3d11_buffer(this, _context, desc);
     }
 
+
     void d3d11_rendering_device_context::vs_set_constant_buffers(buffer** buffers, unsigned int count, unsigned int slot)
     {
         if ( !count )
@@ -113,9 +114,21 @@ namespace orbit::graphics
         utl::vector<ID3D11Buffer*> d3d11_buffers;
         for ( unsigned int i = 0; i < count; ++i )
             d3d11_buffers.emplace_back(static_cast<const d3d11_buffer* const>(buffers[i])->_buffer);
-
         _internal_device_context->VSSetConstantBuffers(slot, count, d3d11_buffers.data());
+    }
 
+    void d3d11_rendering_device_context::ps_set_constant_buffers(buffer** buffers, unsigned int count, unsigned int slot)
+    {
+        if ( !count )
+        {
+            _internal_device_context->PSSetConstantBuffers(0, 0, nullptr);
+            return;
+        }
+
+        utl::vector<ID3D11Buffer*> d3d11_buffers;
+        for ( unsigned int i = 0; i < count; ++i )
+            d3d11_buffers.emplace_back(static_cast<const d3d11_buffer* const>(buffers[i])->_buffer);
+        _internal_device_context->PSSetConstantBuffers(slot, count, d3d11_buffers.data());
     }
 
     void d3d11_rendering_device_context::ps_set_shader_resources(shader_resource** srs, unsigned int count, unsigned int slot)
@@ -174,6 +187,11 @@ namespace orbit::graphics
     void d3d11_rendering_device::create_texture2D(const texture2D_desc& desc, texture2D** texture)
     {
         *texture = new d3d11_texture2D(this, _context, desc);
+    }
+
+    void d3d11_rendering_device::create_texture2D(const texture2D_desc& desc, texture2D** texture, ID3D11Texture2D* d3d11_texture)
+    {
+        *texture = new d3d11_texture2D(this, _context, desc, d3d11_texture);
     }
 
     void d3d11_rendering_device::create_shader_resource(const shader_resource_desc& desc, device_resource* resource, shader_resource** shader_resource)
@@ -237,11 +255,6 @@ namespace orbit::graphics
         }
 
         _internal_device_context->RSSetScissorRects(count, d3d11_scissors.data());
-    }
-
-    void rendering_device::create_render_target(const render_target_desc& desc, device_resource* resource, render_target** render_target)
-    {
-        *render_target = new d3d11_render_target(this, _context, desc, resource);
     }
 
     void d3d11_rendering_device::create_render_target(const render_target_desc& desc, device_resource* resource, render_target** render_target)

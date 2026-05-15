@@ -1,11 +1,12 @@
 #include "renderer.h"
 #include "common/buffer.h"
 #include "common/camera.h"
+#include "common/window.h"
 #include "d3d11/d3d11device.h"
 #include "d3d11/d3d11shader_resource.h"
-#include "orbit/core/system.h"
 
 #include "glm/gtc/type_ptr.hpp"
+#include "orbit/core/input.h"
 
 namespace orbit::graphics::renderer
 {
@@ -32,6 +33,7 @@ namespace orbit::graphics::renderer
 
         program* main_program = nullptr;
 
+        window* main_window = nullptr;
         viewport viewport{};
     }
 
@@ -178,15 +180,40 @@ namespace orbit::graphics::renderer
         return context;
     }
 
+    void window_size_callback(GLFWwindow* window, int width, int height)
+    {
+        swap_chain->resize_swap_chain();
+    }
+
+    bool should_close()
+    {
+        return glfwWindowShouldClose(main_window->get_internal());
+    }
+
+    GLFWwindow* get_window()
+    {
+        return main_window->get_internal();
+    }
+
     void initialize()
     {
+        initialize_api();
+        window_desc window_desc;
+        window_desc.width = 960;
+        window_desc.height = 540;
+        main_window = new window(window_desc);
+
+        glfwSetCursorPosCallback(main_window->get_internal(), input::cursor_position_callback);
+        glfwSetKeyCallback(main_window->get_internal(), input::key_callback);
+        glfwSetWindowSizeCallback(main_window->get_internal(), window_size_callback);
+
         //main hwnd information
         D3D11_RECT window_rect;
-        GetClientRect(system::get_main_hwnd(), &window_rect);
+        GetClientRect(main_window->get_main_hwnd(), &window_rect);
         unsigned int window_width = window_rect.right - window_rect.left;
         unsigned int window_height = window_rect.bottom - window_rect.top;
 
-        HWND main_hwnd = system::get_main_hwnd();
+        HWND main_hwnd = main_window->get_main_hwnd();
         HMONITOR hwnd_monitor = MonitorFromWindow(main_hwnd, MONITOR_DEFAULTTONEAREST);
         MONITORINFOEX monitor_info;
         monitor_info.cbSize = sizeof(MONITORINFOEX);
@@ -211,6 +238,7 @@ namespace orbit::graphics::renderer
         swap_chain_desc.buffer_desc.format = format::FORMAT_R8G8B8A8_UNORM;
         swap_chain_desc.buffer_desc.scaling = scaling_mode::unspecified;
         swap_chain_desc.vsync_enabled = true;
+        swap_chain_desc.window = main_window;
 
         swap_chain_desc.sample_desc.count = 1;
         swap_chain_desc.sample_desc.quality = 0;

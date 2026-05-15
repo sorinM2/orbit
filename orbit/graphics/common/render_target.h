@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include "texture.h"
+#include "window.h"
 
 namespace orbit::graphics
 {
@@ -133,6 +134,7 @@ namespace orbit::graphics
         unsigned int buffer_count;
         bool windowed;
         bool vsync_enabled;
+        window*  window;
     };
 
     class swap_chain : public virtual device_resource
@@ -144,6 +146,7 @@ namespace orbit::graphics
         ~swap_chain() override {};
         virtual void present() = 0;
 
+        virtual void resize_swap_chain() = 0;
         framebuffer* get_framebuffer() const { return _frame_buffer; }
         swap_chain_desc get_desc() const { return _desc; }
 

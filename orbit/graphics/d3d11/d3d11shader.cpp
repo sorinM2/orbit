@@ -45,6 +45,8 @@ namespace orbit::graphics
     	if ( desc.type == shader_type::pixel )
     		target = "ps_5_0";
 
+		std::wstring s(d3d11::shaders::get_shader_path(_desc.path).wstring().c_str());
+
     	D3DCompileFromFile(d3d11::shaders::get_shader_path(_desc.path).wstring().c_str(), nullptr, nullptr, _desc.entry_point.c_str(), target.c_str(),
     		0, 0, &shader_bytecode, &error_blob);
 

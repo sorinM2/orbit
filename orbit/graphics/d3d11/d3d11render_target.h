@@ -19,11 +19,10 @@ namespace orbit::graphics
     {
         friend class d3d11_rendering_device;
         friend class d3d11_rendering_device_context;
-    public:
+
         d3d11_depth_stencil(rendering_device* device, rendering_device_context* context, const depth_stencil_desc& desc, device_resource *resource);
         ~d3d11_depth_stencil() override { util::safe_release(_internal_depth_stencil_view); };
 
-    private:
         ID3D11DepthStencilView* _internal_depth_stencil_view = nullptr;
     };
 
@@ -31,11 +30,9 @@ namespace orbit::graphics
     {
         friend class d3d11_rendering_device;
         friend class d3d11_rendering_device_context;
-    public:
+
         d3d11_render_target(rendering_device* device, rendering_device_context* context, const render_target_desc& desc, device_resource *resource);
         ~d3d11_render_target() override { util::safe_release(_internal_rtv); };
-
-    private:
         ID3D11RenderTargetView* _internal_rtv = nullptr;
     };
 
@@ -43,7 +40,17 @@ namespace orbit::graphics
     {
         friend class d3d11_rendering_device;
         friend class d3d11_rendering_device_context;
+        friend class d3d11_factory;
     public:
+        void present() override
+        {
+            DXCALL(_internal_swap_chain->Present(_desc.vsync_enabled, 0));
+        }
+
+        void resize_swap_chain() override;
+        IDXGISwapChain* get_internal() const { return _internal_swap_chain; };
+    private:
+        void initialize_subresources();
         d3d11_swap_chain(rendering_device* device, rendering_device_context* context, const swap_chain_desc& desc, IDXGIFactory7* factory);
         ~d3d11_swap_chain() override
         {
@@ -52,14 +59,6 @@ namespace orbit::graphics
             util::safe_release(_buffer);
             util::safe_release(_internal_swap_chain);
         };
-
-        void present() override
-        {
-            DXCALL(_internal_swap_chain->Present(_desc.vsync_enabled, 0));
-        }
-
-        IDXGISwapChain* get_internal() const { return _internal_swap_chain; };
-    private:
         IDXGISwapChain* _internal_swap_chain = nullptr;
     };
 }

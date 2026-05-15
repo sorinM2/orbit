@@ -22,7 +22,6 @@ namespace orbit::application
 		graphics::renderer::initialize();
 
 
-
 		model_handle = content::model::add_model(std::filesystem::path("C:\\dev\\orbit\\orbit\\assets\\frank.glb"));
 
 		return true;
@@ -36,9 +35,9 @@ namespace orbit::application
 
 	void update()
 	{
+		glfwPollEvents();
 		graphics::renderer::begin_frame();
-		//content::mesh::render(triangle_handle);
-		//content::model::render_model(model_handle);
+
 
 		entt::registry& reg = ecs::get_instance()->registry;
 		auto drawables = reg.view<components::transform, components::geometry>();
@@ -52,6 +51,11 @@ namespace orbit::application
 		graphics::renderer::begin_editor();
 	}
 
+	bool should_close()
+	{
+		return graphics::renderer::should_close();
+	}
+
 	void render()
 	{
 		graphics::renderer::end_frame();
@@ -59,7 +63,7 @@ namespace orbit::application
 
 	void shutdown()
 	{
-		content::model::remove_model(model_handle);
+		content::model::shutdown();
 		graphics::renderer::shutdown();
 	}
 }
