@@ -31,7 +31,7 @@ add_library (orbit
 
 				ecs/ecs.cpp
 
-				ecs/components.h
+				ecs/components.cpp
  )
 
 

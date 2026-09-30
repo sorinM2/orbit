@@ -77,8 +77,10 @@ namespace orbit::graphics::d3d11
     {
         if ( flag == map_type::map_type_read )
             return D3D11_MAP_READ;
-        if ( flag == map_type::map_type_write )
+        if ( flag == map_type::map_type_write_discard )
             return D3D11_MAP_WRITE_DISCARD;
+        if ( flag == map_type::map_type_write_no_overwrite )
+            return D3D11_MAP_WRITE_NO_OVERWRITE;
         if ( flag == map_type::map_type_read_write )
             return D3D11_MAP_READ_WRITE;
 

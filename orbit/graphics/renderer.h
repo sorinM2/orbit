@@ -27,15 +27,20 @@ namespace orbit::graphics::renderer
         void* resource;
     };
 
+    struct world_buffer_type
+    {
+        glm::mat4 world_matrix;
+        int instanced = false;
+    };
+
     render_target_texture get_render_target_texture();
 
 
     void initialize();
     rendering_device* get_device();
     rendering_device_context* get_context();
-    void bind_world(const glm::mat4& world_matrix);
-
-    void bind_world(const glm::mat4& world_matrix);
+    void bind_world(const glm::mat4& world_matrix, bool instanced = false);
+    void bind_world_instanced(graphics::buffer* instanced_world_buffer);
 
     void begin_frame();
     void begin_editor();

@@ -6,13 +6,12 @@
 
 namespace editor
 {
-    template<typename result_type = void>
     class popup
     {
         public:
         popup(const std::string& name) : _name{name} {}
         virtual void initialize() = 0;
-        virtual result_type update() = 0;
+        virtual void update() = 0;
 
         virtual ~popup() {};
 
@@ -20,7 +19,7 @@ namespace editor
         std::string _name{};
     };
 
-    class model_popup : public popup<>
+    class model_popup : public popup
     {
     public:
         model_popup(const std::string& name) : popup(name) {}

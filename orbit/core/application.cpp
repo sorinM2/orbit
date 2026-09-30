@@ -1,5 +1,6 @@
 #include "application.h"
 
+#include "assimp/code/AssetLib/3MF/3MFXmlTags.h"
 #include "platform/platform_common.h"
 #include "orbit/content/mesh.h"
 #include "orbit/content/model.h"
@@ -40,13 +41,17 @@ namespace orbit::application
 
 
 		entt::registry& reg = ecs::get_instance()->registry;
-		auto drawables = reg.view<components::transform, components::geometry>();
+		// auto drawables = reg.view<components::transform, components::geometry>();
+		//
+		// drawables.each([](const auto entity, auto& transform, auto& geometry)
+		// {
+		// 	if ( geometry.model_handle.is_valid() )
+		// 		content::model::render_model(geometry.model_handle, transform);
+		// });
 
-		drawables.each([](const auto entity, auto& transform, auto& geometry)
-		{
-			if ( geometry._handle.is_valid() )
-				content::model::render_model(geometry._handle, transform);
-		});
+		auto& handles = content::model::get_handles();
+		for ( auto handle : handles )
+			content::model::render_model_instanced(handle);
 
 		graphics::renderer::begin_editor();
 	}

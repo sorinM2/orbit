@@ -29,7 +29,7 @@ namespace orbit::graphics
         virtual mapped_resource map(map_type map_type) = 0;
         virtual void unmap() = 0;
         virtual void update_buffer(unsigned int offset, unsigned int size, void* data) = 0;
-
+        bool is_mapped() const { return _mapped; }
         virtual ~buffer() override {};
 
         buffer_desc get_desc() const { return _desc;}

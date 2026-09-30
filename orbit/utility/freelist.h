@@ -30,6 +30,7 @@ namespace utl
 			id::id_type _id{ id::invalid_id };
 		public:
 			bool is_valid() const { return _id != id::invalid_id; }
+			void invalidate() { _id = id::invalid_id; }
 			constexpr id_handle(){}
 			constexpr id::id_type get_id() const  { return _id; }
 			constexpr auto operator<=>(const id_handle& other) const = default;

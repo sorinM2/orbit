@@ -86,7 +86,8 @@ namespace orbit::graphics
     enum class map_type
     {
         map_type_read,
-        map_type_write,
+        map_type_write_discard,
+        map_type_write_no_overwrite,
         map_type_read_write,
     };
 

@@ -14,6 +14,34 @@ namespace orbit::components
 
     struct geometry
     {
-        content::model::handle_type _handle;
+        content::model::handle_type model_handle;
     };
+
+    struct instanced_geometry
+    {
+        content::model::handle_type model_handle;
+    };
+
+    struct model_change_event
+    {
+        bool removed = false;
+        entt::entity entity;
+        content::model::handle_type model_handle;
+    };
+
+    struct transform_change_event
+    {
+        entt::entity entity;
+    };
+
+    class geometry_system
+    {
+        public:
+            void initialize(entt::registry* registry);
+            void on_model_change(model_change_event& e) const;
+            void on_transform_change(transform_change_event& e) const;
+        private:
+            entt::registry* _registry = nullptr;
+    };
+
 }

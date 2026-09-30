@@ -32,6 +32,7 @@ namespace orbit::graphics::renderer
         buffer* world_buffer = nullptr;
 
         program* main_program = nullptr;
+        program* instanced_program = nullptr;
 
         window* main_window = nullptr;
         viewport viewport{};
@@ -117,8 +118,8 @@ namespace orbit::graphics::renderer
             vertex_desc.type = shader_type::vertex;
             vertex_desc.entry_point = "vs_main";
 
-            utl::vector<input_element> elements(3);
-            vertex_desc.vertex_shader.element_count = 3;
+            utl::vector<input_element> elements(7);
+            vertex_desc.vertex_shader.element_count = 7;
 
             elements[0].classification = input_classification::per_vertex_data;
             elements[0].semantic_name = "POSITION";
@@ -137,6 +138,16 @@ namespace orbit::graphics::renderer
             elements[2].semantic_index = 0;
             elements[2].format = format::FORMAT_R32G32_FLOAT;
             elements[2].input_slot = 0;
+
+            for ( int i = 3; i < 7; ++i )
+            {
+                elements[i].classification = input_classification::per_instance_data;
+                elements[i].semantic_name = "WORLD";
+                elements[i].semantic_index = i - 3;
+                elements[i].format = format::FORMAT_R32G32B32A32_FLOAT;
+                elements[i].input_slot = 1;
+                elements[i].instance_step_rate = 1;
+            }
 
             vertex_desc.vertex_shader.elements = elements.data();
 
@@ -305,18 +316,30 @@ namespace orbit::graphics::renderer
         world_buffer_desc.cpu_access_flags = cpu_access_flags_write;
         world_buffer_desc.initial_data = nullptr;
         world_buffer_desc.usage = resource_usage::resource_dynamic_usage;
-        world_buffer_desc.width = sizeof(glm::mat4);
+        world_buffer_desc.width = sizeof(world_buffer_type);
 
-        device->create_buffer(camera_buffer_desc, &world_buffer);
+        device->create_buffer(world_buffer_desc, &world_buffer);
         context->vs_set_constant_buffers(&world_buffer, 1, 0);
     }
 
-    void bind_world(const glm::mat4& world_matrix)
+    void bind_world(const glm::mat4& world_matrix, bool instanced)
     {
-        mapped_resource mapped_resource = world_buffer->map(map_type::map_type_write);
-        memcpy(mapped_resource._data, glm::value_ptr(world_matrix), sizeof(glm::mat4));
+        world_buffer_type buffer_data;
+        buffer_data.world_matrix = world_matrix;
+        buffer_data.instanced = instanced;
+
+        mapped_resource mapped_resource = world_buffer->map(map_type::map_type_write_discard);
+        memcpy(mapped_resource._data, &buffer_data, sizeof(world_buffer_type));
         world_buffer->unmap();
     }
+
+    void bind_world_instanced(graphics::buffer* instanced_world_buffer)
+    {
+        bind_world(glm::mat4(1.0f), true);
+        unsigned int stride = sizeof(glm::mat4);
+        context->set_vertex_buffers(1, &stride, &instanced_world_buffer, 1);
+    }
+
 
     void begin_frame()
     {
@@ -324,7 +347,7 @@ namespace orbit::graphics::renderer
         context->clear_depth_stencil(view_depth_stencil);
         context->set_program(main_program);
 
-        mapped_resource mapped_resource = camera_buffer->map(map_type::map_type_write);
+        mapped_resource mapped_resource = camera_buffer->map(map_type::map_type_write_discard);
         memcpy(mapped_resource._data, &camera::get_camera_buffer(), sizeof(camera::camera_buffer));
         camera_buffer->unmap();
 

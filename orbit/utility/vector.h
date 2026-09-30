@@ -95,6 +95,11 @@ namespace utl
 			_size = other._size;
 			_capacity = other._capacity;
 
+			_is_tombstone = other._is_tombstone;
+			_first_tombstone = other._first_tombstone;
+			_last_tombstone = other._last_tombstone;
+			_tombstones = other._tombstones;
+
 			other._data = nullptr;
 			other._size = other._capacity = 0;
 
@@ -416,17 +421,7 @@ namespace utl
 
 		~vector()
 		{
-			for (T* value = internal_begin(); value < internal_end(); ++value)
-				if constexpr (disable_tombstoning)
-					value->~T();
-				else
-				{
-					if (!is_tombstone(value))
-						value->~T();
-				}
-
-			::operator delete(_is_tombstone);
-			::operator delete(_data);
+			clear();
 		}
 
 		constexpr bool is_tombstone(T* position) const

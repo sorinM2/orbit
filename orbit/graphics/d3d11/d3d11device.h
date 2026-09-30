@@ -84,9 +84,10 @@ namespace orbit::graphics
         void clear_render_target(render_target* target) override;
         void clear_depth_stencil(depth_stencil* depth_stencil) override;
 
-        void set_vertex_buffers( unsigned int num_buffers, unsigned int* strides, buffer** buffers) override;
+        void set_vertex_buffers( unsigned int num_buffers, unsigned int* strides, buffer** buffers, unsigned int start_slot = 0) override;
         void set_index_buffer(buffer* buffer) override;
         void draw_indexed(unsigned int no_indices) override;
+        void draw_indexed_instanced(unsigned int no_indices, unsigned int no_instances) override;
 
         void set_rasterizer(rasterizer* rasterizer) override;
         void set_viewports(viewport* viewports, unsigned int count) override;

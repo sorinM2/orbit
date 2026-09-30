@@ -15,6 +15,8 @@
 #include "orbit/graphics/renderer.h"
 #include <unordered_map>
 
+#include "orbit/ecs/ecs.h"
+
 namespace orbit::content::model
 {
 	namespace
@@ -52,6 +54,13 @@ namespace orbit::content::model
 			aiProcess_SortByPType);
 
 		process_scene(scene);
+
+		_chunk_buffer_desc.bind_flags = graphics::bind_flags::bind_flag_vertex_buffer;
+		_chunk_buffer_desc.cpu_access_flags = graphics::cpu_access_flags::cpu_access_flags_write;
+		_chunk_buffer_desc.initial_data = nullptr;
+		_chunk_buffer_desc.structured = false;
+		_chunk_buffer_desc.usage = graphics::resource_usage::resource_dynamic_usage;
+		_chunk_buffer_desc.width = _chunk_width * sizeof(glm::mat4);
 	}
 
 	model::~model()
@@ -59,6 +68,9 @@ namespace orbit::content::model
 		for ( auto mesh_handle : _meshes )
 			mesh::remove_mesh(mesh_handle);
 		//util::safe_release(_texture_shader_resource);
+
+		for ( chunk& chunk : _instance_buffer_chunks )
+			util::safe_release(chunk._buffer );
 
 		for ( auto m_handle : _materials )
 			material::remove_material(m_handle);
@@ -227,8 +239,12 @@ namespace orbit::content::model
 	{
 		if( !_models.is_alive(model_handle) )
 			return;
-
 		_models.get(model_handle).render(transform);
+	}
+
+	void render_model_instanced(const handle_type& model_handle )
+	{
+		_models.get(model_handle).render_instanced();
 	}
 
 	model& get_model(handle_type handle)
@@ -236,23 +252,26 @@ namespace orbit::content::model
 		return _models.get(handle);
 	}
 
+	static glm::mat4 process_world_matrix(const components::transform& transform)
+	{
+		glm::mat4 world_matrix = glm::mat4(1.f);
+
+		world_matrix = glm::translate(world_matrix, transform.position);
+		world_matrix = glm::rotate(world_matrix, glm::radians(transform.rotation.z), glm::vec3(0.f, 0.f, 1.f));
+		world_matrix = glm::rotate(world_matrix, glm::radians(transform.rotation.y), glm::vec3(0.f, 1.f, 0.f));
+		world_matrix = glm::rotate(world_matrix, glm::radians(transform.rotation.x), glm::vec3(1.f, 0.f, 0.f));
+		world_matrix = glm::scale(world_matrix, transform.scale);
+		//world_matrix = glm::transpose(world_matrix);
+
+		return world_matrix;
+	}
+
 	void model::render(const components::transform& transform)
 	{
 		graphics::rendering_device_context* context = graphics::renderer::get_context();
 		//context->ps_set_shader_resources(&_texture_shader_resource, 1, 0);
 
-		glm::mat4 world_matrix = glm::mat4(1.f);
-
-		world_matrix = glm::translate(world_matrix, transform.position);
-
-		world_matrix = glm::rotate(world_matrix, glm::radians(transform.rotation.z), glm::vec3(0.f, 0.f, 1.f));
-		world_matrix = glm::rotate(world_matrix, glm::radians(transform.rotation.y), glm::vec3(0.f, 1.f, 0.f));
-		world_matrix = glm::rotate(world_matrix, glm::radians(transform.rotation.x), glm::vec3(1.f, 0.f, 0.f));
-
-		world_matrix = glm::scale(world_matrix, transform.scale);
-
-		world_matrix = glm::transpose(world_matrix);
-
+		glm::mat4 world_matrix = process_world_matrix(transform);
 		graphics::renderer::bind_world(world_matrix);
 
 		for ( auto& mesh_handle : _meshes )
@@ -260,5 +279,98 @@ namespace orbit::content::model
 			material::bind_material(mesh_to_material[mesh_handle]);
 			mesh::render(mesh_handle);
 		}
+	}
+
+	void model::update_chunks(int needed_chunks)
+	{
+		int no_chunks = _instance_buffer_chunks.size();
+
+		if ( no_chunks > needed_chunks )
+		{
+			for ( int i = needed_chunks; i < no_chunks; ++i )
+				util::safe_release(_instance_buffer_chunks[i]._buffer);
+			_instance_buffer_chunks.erase(_instance_buffer_chunks.begin() + needed_chunks, _instance_buffer_chunks.end());
+		}
+		else while ( no_chunks < needed_chunks )
+		{
+			_instance_buffer_chunks.emplace_back();
+			graphics::rendering_device* device = graphics::renderer::get_device();
+			device->create_buffer(_chunk_buffer_desc, &_instance_buffer_chunks[no_chunks]._buffer);
+			no_chunks++;
+		}
+
+	}
+
+	void model::add_instance(entt::entity e)
+	{
+		entt::registry& registry  = ecs::get_instance()->registry;
+		auto transform = registry.get<components::transform>(e);
+		_instance_buffers_data.emplace_back(process_world_matrix(transform));
+		_instance_buffers_entities[e] = _instance_buffers_data.size() - 1;
+
+		int needed_chunks = _instance_buffers_data.size() / _chunk_width + 1;
+		if ( _instance_buffers_data.size() % _chunk_width )
+			needed_chunks++;
+
+		update_chunks(needed_chunks);
+		int current_chunk = needed_chunks - 2;
+		chunk& chunk = _instance_buffer_chunks[current_chunk];
+
+		if ( !chunk._buffer->is_mapped() )
+			chunk._map = chunk._buffer->map(graphics::map_type::map_type_write_no_overwrite);
+
+
+		unsigned int chunk_position = (_instance_buffers_data.size() - 1 ) % _chunk_width;
+		memcpy((char*)chunk._map._data + chunk_position * sizeof(glm::mat4), _instance_buffers_data.last(), sizeof(glm::mat4));
+	}
+
+	void model::remove_instance(entt::entity e)
+	{
+		unsigned int slot = _instance_buffers_entities[e];
+		_instance_buffers_data[slot] = *_instance_buffers_data.last();
+		_instance_buffers_data.erase(_instance_buffers_data.last());
+		_instance_buffers_entities.erase(e);
+
+		int needed_chunks = _instance_buffers_data.size() / _chunk_width + 1;
+		if ( _instance_buffers_data.size() % _chunk_width )
+			needed_chunks++;
+
+		update_chunks(needed_chunks);
+
+		int current_chunk = slot / _chunk_width;
+		int chunk_slot = slot % _chunk_width;
+		chunk& chunk = _instance_buffer_chunks[current_chunk];
+
+		if ( !chunk._buffer->is_mapped() )
+			chunk._map = chunk._buffer->map(graphics::map_type::map_type_write_no_overwrite);
+
+		memcpy((char*)chunk._map._data + chunk_slot * sizeof(glm::mat4), _instance_buffers_data.begin() + slot, sizeof(glm::mat4));
+	}
+
+	void model::render_instanced()
+	{
+		int no_instances_left = _instance_buffers_data.size();
+		int current_chunk = 0;
+
+		while ( no_instances_left > 0)
+		{
+			chunk& chunk = _instance_buffer_chunks[current_chunk];
+			unsigned int current_chunk_width = std::min((int)_chunk_width, no_instances_left);
+
+			if ( chunk._buffer->is_mapped() )
+				chunk._buffer->unmap();
+
+			unsigned int chunk_size = _chunk_width;
+			graphics::renderer::bind_world_instanced(chunk._buffer);
+			for ( auto& mesh_handle : _meshes )
+			{
+				material::bind_material(mesh_to_material[mesh_handle]);
+				mesh::render_instanced(mesh_handle, current_chunk_width);
+			}
+
+			current_chunk++;
+			no_instances_left -= _chunk_width;
+		}
+		graphics::renderer::bind_world_instanced(nullptr);
 	}
 }

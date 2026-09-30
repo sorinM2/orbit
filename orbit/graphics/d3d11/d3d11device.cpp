@@ -32,7 +32,7 @@ namespace orbit::graphics
 
                 D3D_FEATURE_LEVEL maximum_feature_level;
 
-                DXCALL(D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, NULL, supported_feature_levels, _countof(supported_feature_levels), D3D11_SDK_VERSION, NULL, &maximum_feature_level, NULL));
+                DXCALL(D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, 0, supported_feature_levels, _countof(supported_feature_levels), D3D11_SDK_VERSION, NULL, &maximum_feature_level, NULL));
 
                 for ( unsigned int i = 0; i < _countof(supported_feature_levels); ++i )
                     if (supported_feature_levels[i] == maximum_feature_level and i > best_index_feature_level)
@@ -353,14 +353,17 @@ namespace orbit::graphics
             _internal_device_context->PSSetShader(pixel->_internal_pixel_shader, nullptr, 0);
     }
 
-    void d3d11_rendering_device_context::set_vertex_buffers( unsigned int num_buffers, unsigned int* strides, buffer** buffers)
+    void d3d11_rendering_device_context::set_vertex_buffers( unsigned int num_buffers, unsigned int* strides, buffer** buffers, unsigned int start_slot)
     {
         utl::vector<ID3D11Buffer*> v_buffers;
         for ( int i = 0; i < num_buffers; ++i )
-            v_buffers.emplace_back(dynamic_cast<d3d11_buffer*>(buffers[i])->_buffer);
-
+        {
+            if ( auto* i_buffer = dynamic_cast<d3d11_buffer*>(buffers[i]))
+                v_buffers.emplace_back(i_buffer->_buffer);
+            else v_buffers.emplace_back(nullptr);
+        }
         unsigned int offset = 0;
-        _internal_device_context->IASetVertexBuffers(0, v_buffers.size(), v_buffers.data(), strides, &offset);
+        _internal_device_context->IASetVertexBuffers(start_slot, v_buffers.size(), v_buffers.data(), strides, &offset);
     }
 
     void d3d11_rendering_device_context::set_index_buffer(buffer* buffer)
@@ -373,5 +376,9 @@ namespace orbit::graphics
     void d3d11_rendering_device_context::draw_indexed(unsigned int no_indices)
     {
         _internal_device_context->DrawIndexed(no_indices, 0, 0);
+    }
+    void d3d11_rendering_device_context::draw_indexed_instanced(unsigned int no_indices, unsigned int no_instances)
+    {
+        _internal_device_context->DrawIndexedInstanced(no_indices, no_instances, 0, 0, 0);
     }
 }

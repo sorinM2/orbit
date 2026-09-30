@@ -56,6 +56,8 @@ namespace orbit::content::mesh
 		}
 
 		void render();
+		void render_instanced(unsigned int instance_count);
+
 	private:
 		material::handle_type _material;
 
@@ -74,4 +76,5 @@ namespace orbit::content::mesh
 	mesh& get_mesh(const handle_type& handle);
 	void remove_mesh(const handle_type& handle);
 	void render(const handle_type& handle);
+	void render_instanced(const handle_type& handle, unsigned int instance_count);
 }

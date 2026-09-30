@@ -2,6 +2,7 @@
 #include <unordered_set>
 
 #include "assimp/code/AssetLib/3MF/3MFXmlTags.h"
+#include "entt/entity/handle.hpp"
 #include "orbit/graphics/renderer.h"
 namespace orbit::content::mesh
 {
@@ -54,6 +55,14 @@ namespace orbit::content::mesh
 		context->draw_indexed(_indices_count);
 	}
 
+	void mesh::render_instanced(unsigned int instance_count)
+	{
+		graphics::rendering_device_context* context = graphics::renderer::get_context();
+		context->set_index_buffer(_index_buffer);
+		unsigned int stride = sizeof(mesh_data::vertex);
+		context->set_vertex_buffers(1, &stride, &_vertex_buffer);
+		context->draw_indexed_instanced(_indices_count, instance_count);
+	}
 
 	handle_type add_mesh(const mesh_data& mesh_data)
 	{
@@ -80,4 +89,10 @@ namespace orbit::content::mesh
 	{
 		get_mesh(handle).render();
 	}
+
+	void render_instanced(const handle_type& handle, unsigned int instance_count)
+	{
+		get_mesh(handle).render_instanced(instance_count);
+	}
+
 }

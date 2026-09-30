@@ -45,6 +45,7 @@ namespace editor
         {
             const auto entity = registry.create();
             registry.emplace<entity_name>(entity, "new_entity_" + std::to_string(entities.size()));
+            registry.emplace<orbit::components::transform>(entity);
         }
 
         ImGui::End();
@@ -66,18 +67,31 @@ namespace editor
             ImGui::Text("%s", name.c_str());
         }
 
-        orbit::components::geometry* geometry = registry.try_get<orbit::components::geometry>(selected);
+        orbit::components::instanced_geometry* instanced_geometry = registry.try_get<orbit::components::instanced_geometry>(selected);
         orbit::components::transform* transform = registry.try_get<orbit::components::transform>(selected);
 
-        if ( geometry )
+        if ( instanced_geometry )
         {
             if ( ImGui::Button("Set Model") && model_panel::selected_model.is_valid() )
-                geometry->_handle = model_panel::selected_model;
+            {
+                orbit::components::model_change_event event;
+                event.model_handle = model_panel::selected_model;
+                event.entity = selected;
+                ecs->dispatcher.trigger(event);
+            }
+
+            if ( ImGui::Button("Remove Model") )
+            {
+                orbit::components::model_change_event event;
+                event.entity = selected;
+                event.removed = true;
+                ecs->dispatcher.trigger(event);
+            }
         }
 
-        if ( !geometry )
+        if ( !instanced_geometry )
             if ( ImGui::Button("Add Mesh Component") )
-                registry.emplace<orbit::components::geometry>(selected);
+                registry.emplace<orbit::components::instanced_geometry>(selected);
 
         if ( !transform )
             if ( ImGui::Button("Add Transform") )
@@ -85,9 +99,24 @@ namespace editor
 
         if ( transform )
         {
-            ImGui::DragFloat3("Position", glm::value_ptr(transform->position), 0.3f);
-            ImGui::DragFloat3("Rotation", glm::value_ptr(transform->rotation));
-            ImGui::DragFloat3("Scale", glm::value_ptr(transform->scale), 0.3f);
+            bool _changed = false;
+
+            if ( ImGui::DragFloat3("Position", glm::value_ptr(transform->position), 0.3f) )
+                _changed = true;
+            if ( ImGui::DragFloat3("Rotation", glm::value_ptr(transform->rotation)) )
+                _changed = true;
+            if ( ImGui::DragFloat3("Scale", glm::value_ptr(transform->scale), 0.3f) )
+                _changed = true;
+
+            if ( _changed )
+            {
+                ::orbit::components::transform_change_event e { selected };
+                ecs->dispatcher.trigger(e);
+            }
+
+            // ImGui::DragFloat3("Position", glm::value_ptr(transform->position), 0.3f);
+            // ImGui::DragFloat3("Rotation", glm::value_ptr(transform->rotation));
+            // ImGui::DragFloat3("Scale", glm::value_ptr(transform->scale), 0.3f);
         }
 
         ImGui::End();
